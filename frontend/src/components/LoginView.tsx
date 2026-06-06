@@ -64,6 +64,9 @@ export default function LoginView({ apiUrl, onLoginSuccess }: LoginViewProps) {
         setPassword('');
         setConfirmPassword('');
       } else {
+        if (data.id == null || !data.username) {
+          throw new Error('Login response was missing user details.');
+        }
         onLoginSuccess({ id: data.id, username: data.username });
       }
     } catch (err: any) {

@@ -34,20 +34,20 @@ namespace backend.Controllers
         {
             if (request == null)
             {
-                return BadRequest("Request body is required.");
+                return BadRequest(new { message = "Request body is required." });
             }
 
             try
             {
                 if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
                 {
-                    return BadRequest("Username and Password are required.");
+                    return BadRequest(new { message = "Username and Password are required." });
                 }
 
                 var user = await _userService.RegisterAsync(request.Username, request.Password);
                 if (user == null)
                 {
-                    return BadRequest("Username is already taken.");
+                    return BadRequest(new { message = "Username is already taken." });
                 }
 
                 return Ok(new { id = user.Id, username = user.Username, createdAt = user.CreatedAt });
@@ -55,7 +55,7 @@ namespace backend.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Registration failed for username {Username}", request.Username);
-                return StatusCode(500, "Registration failed. Please try again.");
+                return StatusCode(500, new { message = "Registration failed. Please try again." });
             }
         }
 
@@ -65,20 +65,20 @@ namespace backend.Controllers
         {
             if (request == null)
             {
-                return BadRequest("Request body is required.");
+                return BadRequest(new { message = "Request body is required." });
             }
 
             try
             {
                 if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
                 {
-                    return BadRequest("Username and Password are required.");
+                    return BadRequest(new { message = "Username and Password are required." });
                 }
 
                 var user = await _userService.LoginAsync(request.Username, request.Password);
                 if (user == null)
                 {
-                    return Unauthorized("Invalid username or password.");
+                    return Unauthorized(new { message = "Invalid username or password." });
                 }
 
                 return Ok(new { id = user.Id, username = user.Username, message = "Login successful!" });
@@ -86,7 +86,7 @@ namespace backend.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Login failed for username {Username}", request.Username);
-                return StatusCode(500, "Login failed. Please try again.");
+                return StatusCode(500, new { message = "Login failed. Please try again." });
             }
         }
 

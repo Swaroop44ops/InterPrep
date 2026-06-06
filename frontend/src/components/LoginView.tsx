@@ -46,10 +46,16 @@ export default function LoginView({ apiUrl, onLoginSuccess }: LoginViewProps) {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+      let data: { message?: string; id?: number; username?: string } = {};
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        data = { message: responseText || 'Authentication failed' };
+      }
 
       if (!res.ok) {
-        throw new Error(data.message || data || 'Authentication failed');
+        throw new Error(data.message || 'Authentication failed');
       }
 
       if (isRegister) {

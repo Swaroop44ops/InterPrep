@@ -83,9 +83,13 @@ function App() {
 
       const notesRes = await fetch(`${apiUrl}/api/notes`, {
         headers: {
-          'X-User-Id': activeUser.id.toString(),
+          'X-User-Id': activeUser.id?.toString() || '',
         },
       });
+      if (notesRes.status === 401) {
+        handleLogout();
+        return;
+      }
       if (!notesRes.ok) throw new Error('Failed to fetch notes');
       const notesData = await notesRes.json();
       setNotes(notesData);
@@ -127,14 +131,19 @@ function App() {
     };
 
     try {
-      await fetch(`${apiUrl}/api/studysessions`, {
+      const res = await fetch(`${apiUrl}/api/studysessions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-Id': activeUser.id.toString(),
+          'X-User-Id': activeUser.id?.toString() || '',
         },
         body: JSON.stringify(payload),
       });
+
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
 
       // Reset session stats
       setDurationSeconds(0);
@@ -164,6 +173,7 @@ function App() {
   };
 
   const handleCreateNote = async () => {
+    if (!activeUser) return;
     const targetTopicId = activeTopicId || (topics.length > 0 ? topics[0].id : 1);
     const newNotePayload = {
       title: 'Untitled Note',
@@ -176,10 +186,15 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-Id': activeUser.id.toString(),
+          'X-User-Id': activeUser.id?.toString() || '',
         },
         body: JSON.stringify(newNotePayload),
       });
+
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
 
       if (!res.ok) throw new Error('Failed to create note');
       const createdNote = await res.json();
@@ -196,6 +211,7 @@ function App() {
   };
 
   const handleSaveNote = async (id: number, title: string, content: string, isPublic?: boolean) => {
+    if (!activeUser) return;
     const originalNote = notes.find((n) => n.id === id);
     if (!originalNote) return;
 
@@ -210,10 +226,15 @@ function App() {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'X-User-Id': activeUser.id.toString(),
+        'X-User-Id': activeUser.id?.toString() || '',
       },
       body: JSON.stringify(updatedPayload),
     });
+
+    if (res.status === 401) {
+      handleLogout();
+      return;
+    }
 
     if (!res.ok) throw new Error('Failed to save note');
     const savedNote = await res.json();
@@ -228,13 +249,19 @@ function App() {
   };
 
   const handleDeleteNote = async (id: number) => {
+    if (!activeUser) return;
     try {
       const res = await fetch(`${apiUrl}/api/notes/${id}`, {
         method: 'DELETE',
         headers: {
-          'X-User-Id': activeUser.id.toString(),
+          'X-User-Id': activeUser.id?.toString() || '',
         },
       });
+
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
 
       if (!res.ok) throw new Error('Failed to delete note');
       setNotes((prev) => prev.filter((n) => n.id !== id));
@@ -275,9 +302,18 @@ function App() {
       <div className="error-container">
         <h2 className="error-title">Workspace Connection Error</h2>
         <p className="error-msg">{error}</p>
-        <button className="btn-retry" onClick={fetchData}>
-          Reconnect
-        </button>
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+          <button className="btn-retry" onClick={fetchData}>
+            Reconnect
+          </button>
+          <button 
+            className="btn-retry" 
+            style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ff7675' }} 
+            onClick={handleLogout}
+          >
+            Reset Session
+          </button>
+        </div>
       </div>
     );
   }

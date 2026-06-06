@@ -214,25 +214,8 @@ var allowedOrigins = string.IsNullOrWhiteSpace(corsOriginsConfig)
     ? null
     : corsOriginsConfig.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-app.UseRouting();
 app.UseCors();
-app.Use(async (context, next) =>
-{
-    var origin = context.Request.Headers.Origin.ToString();
-    if (!string.IsNullOrEmpty(origin) && (allowedOrigins == null || allowedOrigins.Contains(origin)))
-    {
-        context.Response.OnStarting(() =>
-        {
-            if (!context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"))
-            {
-                context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
-            }
-            return Task.CompletedTask;
-        });
-    }
-
-    await next();
-});
+app.UseRouting();
 app.UseAuthorization();
 app.MapControllers();
 

@@ -6,7 +6,7 @@ namespace backend.Repositories.Interfaces
 {
     public interface IStudySessionRepository
     {
-        Task<IEnumerable<StudySession>> GetAllAsync();
+        Task<IEnumerable<StudySession>> GetAllAsync(int userId);
         Task<StudySession> AddAsync(StudySession session);
     }
 }

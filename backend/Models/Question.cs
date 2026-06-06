@@ -21,6 +21,9 @@ namespace backend.Models
         public Topic? Topic { get; set; }
 
         [Required]
+        public int UserId { get; set; }
+
+        [Required]
         public string Difficulty { get; set; } = "Medium"; // "Easy", "Medium", "Hard"
 
         [Required]

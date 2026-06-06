@@ -6,11 +6,11 @@ namespace backend.Repositories.Interfaces
 {
     public interface IQuestionRepository
     {
-        Task<IEnumerable<Question>> GetAllAsync();
-        Task<IEnumerable<Question>> GetByTopicIdAndDifficultyAsync(int? topicId, string? difficulty);
-        Task<Question?> GetByIdAsync(int id);
+        Task<IEnumerable<Question>> GetAllAsync(int userId);
+        Task<IEnumerable<Question>> GetByTopicIdAndDifficultyAsync(int? topicId, string? difficulty, int userId);
+        Task<Question?> GetByIdAsync(int id, int userId);
         Task<Question> AddAsync(Question question);
         Task<Question> UpdateAsync(Question question);
-        Task<bool> DeleteAsync(int id);
+        Task<bool> DeleteAsync(int id, int userId);
     }
 }

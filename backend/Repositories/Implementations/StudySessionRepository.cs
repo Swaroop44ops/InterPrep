@@ -16,9 +16,9 @@ namespace backend.Repositories.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<StudySession>> GetAllAsync()
+        public async Task<IEnumerable<StudySession>> GetAllAsync(int userId)
         {
-            return await _context.StudySessions.ToListAsync();
+            return await _context.StudySessions.Where(s => s.UserId == userId).ToListAsync();
         }
 
         public async Task<StudySession> AddAsync(StudySession session)

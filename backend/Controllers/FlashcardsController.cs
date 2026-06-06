@@ -21,16 +21,30 @@ namespace backend.Controllers
 
         // GET: api/flashcards?topicId=1
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Flashcard>>> GetFlashcards([FromQuery] int? topicId)
+        public async Task<ActionResult<IEnumerable<Flashcard>>> GetFlashcards(
+            [FromHeader(Name = "X-User-Id")] int? userId,
+            [FromQuery] int? topicId)
         {
-            var cards = await _flashcardService.GetFlashcardsAsync(topicId);
+            if (!userId.HasValue || userId.Value <= 0)
+            {
+                return Unauthorized("Missing or invalid user context (X-User-Id header).");
+            }
+
+            var cards = await _flashcardService.GetFlashcardsAsync(topicId, userId.Value);
             return Ok(cards);
         }
 
         // POST: api/flashcards
         [HttpPost]
-        public async Task<ActionResult<Flashcard>> CreateFlashcard([FromBody] Flashcard flashcard)
+        public async Task<ActionResult<Flashcard>> CreateFlashcard(
+            [FromHeader(Name = "X-User-Id")] int? userId,
+            [FromBody] Flashcard flashcard)
         {
+            if (!userId.HasValue || userId.Value <= 0)
+            {
+                return Unauthorized("Missing or invalid user context (X-User-Id header).");
+            }
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -42,33 +56,55 @@ namespace backend.Controllers
                 return BadRequest("Invalid Topic ID.");
             }
 
-            var createdCard = await _flashcardService.CreateFlashcardAsync(flashcard);
-            return CreatedAtAction(nameof(GetFlashcardById), new { id = createdCard.Id }, createdCard);
+            var createdCard = await _flashcardService.CreateFlashcardAsync(flashcard, userId.Value);
+            return CreatedAtAction(nameof(GetFlashcardById), new { id = createdCard.Id, userId = userId.Value }, createdCard);
         }
 
         // GET: api/flashcards/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Flashcard>> GetFlashcardById(int id)
+        public async Task<ActionResult<Flashcard>> GetFlashcardById(
+            [FromHeader(Name = "X-User-Id")] int? userId,
+            int id)
         {
-            var card = await _flashcardService.GetFlashcardByIdAsync(id);
+            if (!userId.HasValue || userId.Value <= 0)
+            {
+                return Unauthorized("Missing or invalid user context (X-User-Id header).");
+            }
+
+            var card = await _flashcardService.GetFlashcardByIdAsync(id, userId.Value);
             if (card == null) return NotFound();
             return Ok(card);
         }
 
         // POST: api/flashcards/5/review?quality=easy
         [HttpPost("{id}/review")]
-        public async Task<ActionResult<Flashcard>> ReviewFlashcard(int id, [FromQuery] string quality)
+        public async Task<ActionResult<Flashcard>> ReviewFlashcard(
+            [FromHeader(Name = "X-User-Id")] int? userId,
+            int id,
+            [FromQuery] string quality)
         {
-            var card = await _flashcardService.ReviewFlashcardAsync(id, quality);
+            if (!userId.HasValue || userId.Value <= 0)
+            {
+                return Unauthorized("Missing or invalid user context (X-User-Id header).");
+            }
+
+            var card = await _flashcardService.ReviewFlashcardAsync(id, quality, userId.Value);
             if (card == null) return NotFound();
             return Ok(card);
         }
 
         // DELETE: api/flashcards/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteFlashcard(int id)
+        public async Task<IActionResult> DeleteFlashcard(
+            [FromHeader(Name = "X-User-Id")] int? userId,
+            int id)
         {
-            var deleted = await _flashcardService.DeleteFlashcardAsync(id);
+            if (!userId.HasValue || userId.Value <= 0)
+            {
+                return Unauthorized("Missing or invalid user context (X-User-Id header).");
+            }
+
+            var deleted = await _flashcardService.DeleteFlashcardAsync(id, userId.Value);
             if (!deleted) return NotFound();
             return NoContent();
         }

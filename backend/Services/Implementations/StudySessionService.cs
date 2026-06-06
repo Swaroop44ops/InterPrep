@@ -24,20 +24,21 @@ namespace backend.Services.Implementations
             _flashcardRepository = flashcardRepository;
         }
 
-        public async Task<IEnumerable<StudySession>> GetStudySessionsAsync()
+        public async Task<IEnumerable<StudySession>> GetStudySessionsAsync(int userId)
         {
-            return await _studySessionRepository.GetAllAsync();
+            return await _studySessionRepository.GetAllAsync(userId);
         }
 
-        public async Task<StudySession> LogStudySessionAsync(StudySession session)
+        public async Task<StudySession> LogStudySessionAsync(StudySession session, int userId)
         {
+            session.UserId = userId;
             return await _studySessionRepository.AddAsync(session);
         }
 
-        public async Task<object> GetStatsSummaryAsync()
+        public async Task<object> GetStatsSummaryAsync(int userId)
         {
             // 1. Group historical sessions by date to build the heatmap data source
-            var sessions = await _studySessionRepository.GetAllAsync();
+            var sessions = await _studySessionRepository.GetAllAsync(userId);
             var heatmap = sessions
                 .GroupBy(s => s.CreatedAt.Date)
                 .Select(g => new {
@@ -48,7 +49,7 @@ namespace backend.Services.Implementations
                 .ToList();
 
             // 2. Count confident questions per topic
-            var questions = await _questionRepository.GetAllAsync();
+            var questions = await _questionRepository.GetAllAsync(userId);
             var confidentQuestions = questions
                 .Where(q => q.Status == "Confident")
                 .GroupBy(q => q.TopicId)
@@ -59,7 +60,7 @@ namespace backend.Services.Implementations
                 .ToList();
 
             // 3. Count due flashcards per topic
-            var flashcards = await _flashcardRepository.GetAllAsync();
+            var flashcards = await _flashcardRepository.GetAllAsync(userId);
             var now = DateTime.UtcNow;
             var dueFlashcards = flashcards
                 .Where(f => f.NextReviewDate <= now)

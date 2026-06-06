@@ -17,12 +17,14 @@ interface Topic {
 interface QuestionBankViewProps {
   topics: Topic[];
   apiUrl: string;
+  userId: number;
   onQuestionAttempted: () => void; // Call parent to track study session stats
 }
 
 export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   topics,
   apiUrl,
+  userId,
   onQuestionAttempted,
 }) => {
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -49,7 +51,11 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       if (activeDiffFilter) params.push(`difficulty=${activeDiffFilter}`);
       if (params.length > 0) url += `?${params.join('&')}`;
 
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: {
+          'X-User-Id': userId.toString()
+        }
+      });
       if (!res.ok) throw new Error('Failed to load questions');
       const data = await res.json();
       setQuestions(data);
@@ -73,7 +79,10 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     try {
       const res = await fetch(`${apiUrl}/api/questions/${id}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-User-Id': userId.toString()
+        },
         body: JSON.stringify(nextStatus),
       });
 
@@ -105,7 +114,10 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     try {
       const res = await fetch(`${apiUrl}/api/questions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-User-Id': userId.toString()
+        },
         body: JSON.stringify(payload),
       });
 

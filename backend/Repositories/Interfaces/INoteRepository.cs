@@ -6,11 +6,11 @@ namespace backend.Repositories.Interfaces
 {
     public interface INoteRepository
     {
-        Task<IEnumerable<Note>> GetAllAsync();
-        Task<IEnumerable<Note>> GetByTopicIdAsync(int topicId);
-        Task<Note?> GetByIdAsync(int id);
+        Task<IEnumerable<Note>> GetAllAsync(int userId);
+        Task<IEnumerable<Note>> GetByTopicIdAsync(int topicId, int userId);
+        Task<Note?> GetByIdAsync(int id, int userId);
         Task<Note> AddAsync(Note note);
         Task<Note> UpdateAsync(Note note);
-        Task<bool> DeleteAsync(int id);
+        Task<bool> DeleteAsync(int id, int userId);
     }
 }

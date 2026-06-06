@@ -6,10 +6,10 @@ namespace backend.Services.Interfaces
 {
     public interface IQuestionService
     {
-        Task<IEnumerable<Question>> GetQuestionsAsync(int? topicId, string? difficulty);
-        Task<Question?> GetQuestionByIdAsync(int id);
-        Task<Question> CreateQuestionAsync(Question question);
-        Task<Question?> UpdateQuestionStatusAsync(int id, string status);
-        Task<bool> DeleteQuestionAsync(int id);
+        Task<IEnumerable<Question>> GetQuestionsAsync(int? topicId, string? difficulty, int userId);
+        Task<Question?> GetQuestionByIdAsync(int id, int userId);
+        Task<Question> CreateQuestionAsync(Question question, int userId);
+        Task<Question?> UpdateQuestionStatusAsync(int id, string status, int userId);
+        Task<bool> DeleteQuestionAsync(int id, int userId);
     }
 }

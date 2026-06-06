@@ -19,6 +19,12 @@ namespace backend.Models
         [ForeignKey("TopicId")]
         public Topic? Topic { get; set; }
         
+        [Required]
+        public int UserId { get; set; }
+        
+        [Required]
+        public bool IsPublic { get; set; } = false;
+        
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }

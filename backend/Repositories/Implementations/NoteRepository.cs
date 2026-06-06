@@ -17,19 +17,19 @@ namespace backend.Repositories.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<Note>> GetAllAsync()
+        public async Task<IEnumerable<Note>> GetAllAsync(int userId)
         {
-            return await _context.Notes.ToListAsync();
+            return await _context.Notes.Where(n => n.UserId == userId || n.IsPublic).ToListAsync();
         }
 
-        public async Task<IEnumerable<Note>> GetByTopicIdAsync(int topicId)
+        public async Task<IEnumerable<Note>> GetByTopicIdAsync(int topicId, int userId)
         {
-            return await _context.Notes.Where(n => n.TopicId == topicId).ToListAsync();
+            return await _context.Notes.Where(n => n.TopicId == topicId && (n.UserId == userId || n.IsPublic)).ToListAsync();
         }
 
-        public async Task<Note?> GetByIdAsync(int id)
+        public async Task<Note?> GetByIdAsync(int id, int userId)
         {
-            return await _context.Notes.FindAsync(id);
+            return await _context.Notes.FirstOrDefaultAsync(n => n.Id == id && (n.UserId == userId || n.IsPublic));
         }
 
         public async Task<Note> AddAsync(Note note)
@@ -46,9 +46,9 @@ namespace backend.Repositories.Implementations
             return note;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id, int userId)
         {
-            var note = await _context.Notes.FindAsync(id);
+            var note = await _context.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
             if (note == null) return false;
 
             _context.Notes.Remove(note);

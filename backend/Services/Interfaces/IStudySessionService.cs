@@ -6,8 +6,8 @@ namespace backend.Services.Interfaces
 {
     public interface IStudySessionService
     {
-        Task<IEnumerable<StudySession>> GetStudySessionsAsync();
-        Task<StudySession> LogStudySessionAsync(StudySession session);
-        Task<object> GetStatsSummaryAsync();
+        Task<IEnumerable<StudySession>> GetStudySessionsAsync(int userId);
+        Task<StudySession> LogStudySessionAsync(StudySession session, int userId);
+        Task<object> GetStatsSummaryAsync(int userId);
     }
 }

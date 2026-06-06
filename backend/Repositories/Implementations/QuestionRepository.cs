@@ -17,14 +17,14 @@ namespace backend.Repositories.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<Question>> GetAllAsync()
+        public async Task<IEnumerable<Question>> GetAllAsync(int userId)
         {
-            return await _context.Questions.ToListAsync();
+            return await _context.Questions.Where(q => q.UserId == userId).ToListAsync();
         }
 
-        public async Task<IEnumerable<Question>> GetByTopicIdAndDifficultyAsync(int? topicId, string? difficulty)
+        public async Task<IEnumerable<Question>> GetByTopicIdAndDifficultyAsync(int? topicId, string? difficulty, int userId)
         {
-            IQueryable<Question> query = _context.Questions;
+            IQueryable<Question> query = _context.Questions.Where(q => q.UserId == userId);
             if (topicId.HasValue && topicId.Value > 0)
             {
                 query = query.Where(q => q.TopicId == topicId.Value);
@@ -38,9 +38,9 @@ namespace backend.Repositories.Implementations
             return await query.ToListAsync();
         }
 
-        public async Task<Question?> GetByIdAsync(int id)
+        public async Task<Question?> GetByIdAsync(int id, int userId)
         {
-            return await _context.Questions.FindAsync(id);
+            return await _context.Questions.FirstOrDefaultAsync(q => q.Id == id && q.UserId == userId);
         }
 
         public async Task<Question> AddAsync(Question question)
@@ -57,9 +57,9 @@ namespace backend.Repositories.Implementations
             return question;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id, int userId)
         {
-            var question = await _context.Questions.FindAsync(id);
+            var question = await _context.Questions.FirstOrDefaultAsync(q => q.Id == id && q.UserId == userId);
             if (question == null) return false;
 
             _context.Questions.Remove(question);

@@ -5,6 +5,7 @@ import NoteEditor from './components/NoteEditor';
 import FlashcardsView from './components/FlashcardsView';
 import QuestionBankView from './components/QuestionBankView';
 import DashboardView from './components/DashboardView';
+import LoginView from './components/LoginView';
 
 interface Topic {
   id: number;
@@ -18,6 +19,8 @@ interface Note {
   title: string;
   content: string;
   topicId: number;
+  userId: number;
+  isPublic: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,6 +30,19 @@ type TabType = 'notebook' | 'flashcards' | 'questions' | 'dashboard';
 function App() {
   const [activeTab, setActiveTab] = useState<TabType>('notebook');
 
+  // Authentication State
+  const [activeUser, setActiveUser] = useState<{ id: number; username: string } | null>(() => {
+    const saved = localStorage.getItem('activeUser');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
   // Notebook States
   const [topics, setTopics] = useState<Topic[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -34,7 +50,7 @@ function App() {
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   
   // General Page States
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Spaced Repetition Session Trackers
@@ -56,6 +72,7 @@ function App() {
 
   // 2. Initial Data Load
   const fetchData = async () => {
+    if (!activeUser) return;
     setLoading(true);
     setError(null);
     try {
@@ -64,7 +81,11 @@ function App() {
       const topicsData = await topicsRes.json();
       setTopics(topicsData);
 
-      const notesRes = await fetch(`${apiUrl}/api/notes`);
+      const notesRes = await fetch(`${apiUrl}/api/notes`, {
+        headers: {
+          'X-User-Id': activeUser.id.toString(),
+        },
+      });
       if (!notesRes.ok) throw new Error('Failed to fetch notes');
       const notesData = await notesRes.json();
       setNotes(notesData);
@@ -82,10 +103,20 @@ function App() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [activeUser]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('activeUser');
+    setActiveUser(null);
+    setTopics([]);
+    setNotes([]);
+    setActiveNote(null);
+    setActiveTopicId(null);
+  };
 
   // 3. Log Study Session on Tab Change
   const logCurrentSession = async () => {
+    if (!activeUser) return;
     if (durationSeconds < 5) return; // Skip logging sessions under 5 seconds to prevent spam
 
     const payload = {
@@ -98,7 +129,10 @@ function App() {
     try {
       await fetch(`${apiUrl}/api/studysessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': activeUser.id.toString(),
+        },
         body: JSON.stringify(payload),
       });
 
@@ -140,7 +174,10 @@ function App() {
     try {
       const res = await fetch(`${apiUrl}/api/notes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': activeUser.id.toString(),
+        },
         body: JSON.stringify(newNotePayload),
       });
 
@@ -158,7 +195,7 @@ function App() {
     }
   };
 
-  const handleSaveNote = async (id: number, title: string, content: string) => {
+  const handleSaveNote = async (id: number, title: string, content: string, isPublic?: boolean) => {
     const originalNote = notes.find((n) => n.id === id);
     if (!originalNote) return;
 
@@ -166,11 +203,15 @@ function App() {
       ...originalNote,
       title,
       content,
+      isPublic: isPublic !== undefined ? isPublic : originalNote.isPublic,
     };
 
     const res = await fetch(`${apiUrl}/api/notes/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Id': activeUser.id.toString(),
+      },
       body: JSON.stringify(updatedPayload),
     });
 
@@ -190,6 +231,9 @@ function App() {
     try {
       const res = await fetch(`${apiUrl}/api/notes/${id}`, {
         method: 'DELETE',
+        headers: {
+          'X-User-Id': activeUser.id.toString(),
+        },
       });
 
       if (!res.ok) throw new Error('Failed to delete note');
@@ -204,6 +248,18 @@ function App() {
       alert(`Error: ${err.message}`);
     }
   };
+
+  if (!activeUser) {
+    return (
+      <LoginView
+        apiUrl={apiUrl}
+        onLoginSuccess={(user) => {
+          setActiveUser(user);
+          localStorage.setItem('activeUser', JSON.stringify(user));
+        }}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -270,10 +326,22 @@ function App() {
           </button>
         </nav>
 
-        {/* Live Timer Status */}
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-cyan)' }}></span>
-          Study Timer: {Math.floor(durationSeconds / 60)}m {durationSeconds % 60}s
+        {/* User Info & Live Timer */}
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-cyan)' }}></span>
+            Study Timer: {Math.floor(durationSeconds / 60)}m {durationSeconds % 60}s
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderLeft: '1px solid var(--border-color)', paddingLeft: '1.25rem' }}>
+            <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>👤 {activeUser.username}</span>
+            <button
+              onClick={handleLogout}
+              className="toolbar-btn"
+              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ff7675', cursor: 'pointer', borderRadius: '4px' }}
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
@@ -297,9 +365,11 @@ function App() {
               onCreateNote={handleCreateNote}
               activeTopicId={activeTopicId}
               topics={topics}
+              activeUserId={activeUser.id}
             />
             <NoteEditor 
               note={activeNote} 
+              activeUserId={activeUser.id}
               onSave={handleSaveNote} 
             />
           </div>
@@ -311,6 +381,7 @@ function App() {
             <FlashcardsView
               topics={topics}
               apiUrl={apiUrl}
+              userId={activeUser.id}
               onCardReviewed={() => setCardsReviewedCount((prev) => prev + 1)}
             />
           </div>
@@ -322,6 +393,7 @@ function App() {
             <QuestionBankView
               topics={topics}
               apiUrl={apiUrl}
+              userId={activeUser.id}
               onQuestionAttempted={() => setQuestionsAttemptedCount((prev) => prev + 1)}
             />
           </div>
@@ -333,6 +405,7 @@ function App() {
             <DashboardView
               topics={topics}
               apiUrl={apiUrl}
+              userId={activeUser.id}
               sessionTrigger={sessionTrigger}
             />
           </div>

@@ -7,18 +7,22 @@ interface Note {
   title: string;
   content: string;
   topicId: number;
+  userId: number;
+  isPublic: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 interface NoteEditorProps {
   note: Note | null;
-  onSave: (id: number, title: string, content: string) => Promise<void>;
+  activeUserId: number;
+  onSave: (id: number, title: string, content: string, isPublic?: boolean) => Promise<void>;
 }
 
-export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
+export const NoteEditor: React.FC<NoteEditorProps> = ({ note, activeUserId, onSave }) => {
   const [title, setTitle] = useState('');
   const [contentHtml, setContentHtml] = useState('');
+  const [isPublic, setIsPublic] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('saved');
 
   // Initialize TipTap Editor
@@ -42,6 +46,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
     if (editor && note) {
       setTitle(note.title);
       setContentHtml(note.content);
+      setIsPublic(note.isPublic || false);
+      
+      const isOwner = note.userId === activeUserId;
+      editor.setEditable(isOwner);
       
       // Prevent infinite cursor resets by checking if content changed
       if (editor.getHTML() !== note.content) {
@@ -49,14 +57,16 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
       }
       setSaveStatus('saved');
     }
-  }, [note?.id, editor]);
+  }, [note?.id, editor, activeUserId]);
 
   // Debounced auto-save effect
   useEffect(() => {
     if (!note) return;
+    const isOwner = note.userId === activeUserId;
+    if (!isOwner) return;
 
     // Check if the current state differs from the saved database note
-    const isChanged = title !== note.title || contentHtml !== note.content;
+    const isChanged = title !== note.title || contentHtml !== note.content || isPublic !== note.isPublic;
     if (!isChanged) return;
 
     // When the user starts typing, status turns to idle
@@ -65,7 +75,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
     const delayDebounceFn = setTimeout(async () => {
       setSaveStatus('saving');
       try {
-        await onSave(note.id, title, contentHtml);
+        await onSave(note.id, title, contentHtml, isPublic);
         setSaveStatus('saved');
       } catch (err) {
         console.error('Auto-save failed:', err);
@@ -74,7 +84,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
     }, 1500); // 1.5 seconds debounce
 
     return () => clearTimeout(delayDebounceFn);
-  }, [title, contentHtml, note?.id]);
+  }, [title, contentHtml, isPublic, note?.id, activeUserId]);
 
   if (!note || !editor) {
     return (
@@ -90,24 +100,49 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
     );
   }
 
+  const isOwner = note.userId === activeUserId;
+
   return (
     <div className="editor-panel">
       {/* Editor Status Bar */}
       <div className="editor-header-bar">
         <div className="editor-status-text">
-          <span className={`editor-status-dot ${saveStatus}`}></span>
-          {saveStatus === 'saved' && 'All changes saved'}
-          {saveStatus === 'saving' && 'Saving...'}
-          {saveStatus === 'idle' && 'Unsaved changes'}
+          {isOwner ? (
+            <>
+              <span className={`editor-status-dot ${saveStatus}`}></span>
+              {saveStatus === 'saved' && 'All changes saved'}
+              {saveStatus === 'saving' && 'Saving...'}
+              {saveStatus === 'idle' && 'Unsaved changes'}
+            </>
+          ) : (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>👁️ Read-Only Mode</span>
+          )}
         </div>
-        <div>
-          <button 
-            className="btn-new-note" 
-            style={{ padding: '0.3rem 0.6rem', background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
-            onClick={() => onSave(note.id, title, editor.getHTML()).then(() => setSaveStatus('saved'))}
-          >
-            Save Now
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {isOwner ? (
+            <>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                <input
+                  type="checkbox"
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                🌐 Public
+              </label>
+              <button 
+                className="btn-new-note" 
+                style={{ padding: '0.3rem 0.6rem', background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+                onClick={() => onSave(note.id, title, editor.getHTML(), isPublic).then(() => setSaveStatus('saved'))}
+              >
+                Save Now
+              </button>
+            </>
+          ) : (
+            <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', background: 'rgba(0, 206, 201, 0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(0, 206, 201, 0.2)' }}>
+              🌐 Shared Publicly
+            </span>
+          )}
         </div>
       </div>
 
@@ -120,10 +155,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
             placeholder="Untitled Note"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            readOnly={!isOwner}
           />
 
-          {/* TipTap Rich Text Toolbar */}
-          <div className="editor-toolbar">
+          {/* TipTap Rich Text Toolbar (Only visible to owner) */}
+          {isOwner && (
+            <div className="editor-toolbar">
             <button
               onClick={() => editor.chain().focus().toggleBold().run()}
               className={`toolbar-btn ${editor.isActive('bold') ? 'active' : ''}`}
@@ -213,6 +250,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
               ↷
             </button>
           </div>
+          )}
 
           {/* TipTap WYSIWYG Content Area */}
           <div className="tiptap-container">

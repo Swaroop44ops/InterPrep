@@ -20,6 +20,9 @@ namespace backend.Models
         [ForeignKey("TopicId")]
         public Topic? Topic { get; set; }
 
+        [Required]
+        public int UserId { get; set; }
+
         public DateTime NextReviewDate { get; set; } = DateTime.UtcNow;
 
         public int IntervalDays { get; set; } = 1;

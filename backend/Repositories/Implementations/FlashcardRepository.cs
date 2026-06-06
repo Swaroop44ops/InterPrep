@@ -17,19 +17,19 @@ namespace backend.Repositories.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<Flashcard>> GetAllAsync()
+        public async Task<IEnumerable<Flashcard>> GetAllAsync(int userId)
         {
-            return await _context.Flashcards.ToListAsync();
+            return await _context.Flashcards.Where(f => f.UserId == userId).ToListAsync();
         }
 
-        public async Task<IEnumerable<Flashcard>> GetByTopicIdAsync(int topicId)
+        public async Task<IEnumerable<Flashcard>> GetByTopicIdAsync(int topicId, int userId)
         {
-            return await _context.Flashcards.Where(f => f.TopicId == topicId).ToListAsync();
+            return await _context.Flashcards.Where(f => f.TopicId == topicId && f.UserId == userId).ToListAsync();
         }
 
-        public async Task<Flashcard?> GetByIdAsync(int id)
+        public async Task<Flashcard?> GetByIdAsync(int id, int userId)
         {
-            return await _context.Flashcards.FindAsync(id);
+            return await _context.Flashcards.FirstOrDefaultAsync(f => f.Id == id && f.UserId == userId);
         }
 
         public async Task<Flashcard> AddAsync(Flashcard flashcard)
@@ -46,9 +46,9 @@ namespace backend.Repositories.Implementations
             return flashcard;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id, int userId)
         {
-            var card = await _context.Flashcards.FindAsync(id);
+            var card = await _context.Flashcards.FirstOrDefaultAsync(f => f.Id == id && f.UserId == userId);
             if (card == null) return false;
 
             _context.Flashcards.Remove(card);

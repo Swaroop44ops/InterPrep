@@ -31,12 +31,14 @@ interface StatsData {
 interface DashboardViewProps {
   topics: Topic[];
   apiUrl: string;
+  userId: number;
   sessionTrigger: number; // Used to trigger refresh when parent logs a session
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   topics,
   apiUrl,
+  userId,
   sessionTrigger,
 }) => {
   const [sessions, setSessions] = useState<StudySession[]>([]);
@@ -47,13 +49,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setLoading(true);
     try {
       // Fetch study logs
-      const sessionsRes = await fetch(`${apiUrl}/api/studysessions`);
+      const sessionsRes = await fetch(`${apiUrl}/api/studysessions`, {
+        headers: {
+          'X-User-Id': userId.toString()
+        }
+      });
       if (!sessionsRes.ok) throw new Error('Failed to load study sessions');
       const sessionsData = await sessionsRes.json();
       setSessions(sessionsData);
 
       // Fetch aggregated analytics (heatmap, due cards, confident questions)
-      const statsRes = await fetch(`${apiUrl}/api/studysessions/stats`);
+      const statsRes = await fetch(`${apiUrl}/api/studysessions/stats`, {
+        headers: {
+          'X-User-Id': userId.toString()
+        }
+      });
       if (!statsRes.ok) throw new Error('Failed to load stats');
       const statsData = await statsRes.json();
       setStats(statsData);

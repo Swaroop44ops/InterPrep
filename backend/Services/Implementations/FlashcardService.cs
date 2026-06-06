@@ -16,28 +16,29 @@ namespace backend.Services.Implementations
             _flashcardRepository = flashcardRepository;
         }
 
-        public async Task<IEnumerable<Flashcard>> GetFlashcardsAsync(int? topicId)
+        public async Task<IEnumerable<Flashcard>> GetFlashcardsAsync(int? topicId, int userId)
         {
             if (topicId.HasValue && topicId.Value > 0)
             {
-                return await _flashcardRepository.GetByTopicIdAsync(topicId.Value);
+                return await _flashcardRepository.GetByTopicIdAsync(topicId.Value, userId);
             }
-            return await _flashcardRepository.GetAllAsync();
+            return await _flashcardRepository.GetAllAsync(userId);
         }
 
-        public async Task<Flashcard?> GetFlashcardByIdAsync(int id)
+        public async Task<Flashcard?> GetFlashcardByIdAsync(int id, int userId)
         {
-            return await _flashcardRepository.GetByIdAsync(id);
+            return await _flashcardRepository.GetByIdAsync(id, userId);
         }
 
-        public async Task<Flashcard> CreateFlashcardAsync(Flashcard flashcard)
+        public async Task<Flashcard> CreateFlashcardAsync(Flashcard flashcard, int userId)
         {
+            flashcard.UserId = userId;
             return await _flashcardRepository.AddAsync(flashcard);
         }
 
-        public async Task<Flashcard?> ReviewFlashcardAsync(int id, string quality)
+        public async Task<Flashcard?> ReviewFlashcardAsync(int id, string quality, int userId)
         {
-            var card = await _flashcardRepository.GetByIdAsync(id);
+            var card = await _flashcardRepository.GetByIdAsync(id, userId);
             if (card == null) return null;
 
             if (string.Equals(quality, "easy", StringComparison.OrdinalIgnoreCase))
@@ -54,9 +55,9 @@ namespace backend.Services.Implementations
             return await _flashcardRepository.UpdateAsync(card);
         }
 
-        public async Task<bool> DeleteFlashcardAsync(int id)
+        public async Task<bool> DeleteFlashcardAsync(int id, int userId)
         {
-            return await _flashcardRepository.DeleteAsync(id);
+            return await _flashcardRepository.DeleteAsync(id, userId);
         }
     }
 }

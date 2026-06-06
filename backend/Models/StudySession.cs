@@ -16,6 +16,9 @@ namespace backend.Models
 
         public int QuestionsAttemptedCount { get; set; }
 
+        [Required]
+        public int UserId { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

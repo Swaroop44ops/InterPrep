@@ -16,24 +16,25 @@ namespace backend.Services.Implementations
             _questionRepository = questionRepository;
         }
 
-        public async Task<IEnumerable<Question>> GetQuestionsAsync(int? topicId, string? difficulty)
+        public async Task<IEnumerable<Question>> GetQuestionsAsync(int? topicId, string? difficulty, int userId)
         {
-            return await _questionRepository.GetByTopicIdAndDifficultyAsync(topicId, difficulty);
+            return await _questionRepository.GetByTopicIdAndDifficultyAsync(topicId, difficulty, userId);
         }
 
-        public async Task<Question?> GetQuestionByIdAsync(int id)
+        public async Task<Question?> GetQuestionByIdAsync(int id, int userId)
         {
-            return await _questionRepository.GetByIdAsync(id);
+            return await _questionRepository.GetByIdAsync(id, userId);
         }
 
-        public async Task<Question> CreateQuestionAsync(Question question)
+        public async Task<Question> CreateQuestionAsync(Question question, int userId)
         {
+            question.UserId = userId;
             return await _questionRepository.AddAsync(question);
         }
 
-        public async Task<Question?> UpdateQuestionStatusAsync(int id, string status)
+        public async Task<Question?> UpdateQuestionStatusAsync(int id, string status, int userId)
         {
-            var question = await _questionRepository.GetByIdAsync(id);
+            var question = await _questionRepository.GetByIdAsync(id, userId);
             if (question == null) return null;
 
             var formattedStatus = string.Empty;
@@ -48,9 +49,9 @@ namespace backend.Services.Implementations
             return await _questionRepository.UpdateAsync(question);
         }
 
-        public async Task<bool> DeleteQuestionAsync(int id)
+        public async Task<bool> DeleteQuestionAsync(int id, int userId)
         {
-            return await _questionRepository.DeleteAsync(id);
+            return await _questionRepository.DeleteAsync(id, userId);
         }
     }
 }

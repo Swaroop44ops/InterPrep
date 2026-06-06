@@ -112,8 +112,8 @@ else
     app.Urls.Add("http://localhost:5100");
 }
 
-app.UseRouting();
 app.UseCors("AllowAll");
+app.UseRouting();
 app.UseAuthorization();
 app.MapControllers();
 

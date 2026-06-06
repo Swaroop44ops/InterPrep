@@ -33,14 +33,25 @@ else
         options.UseNpgsql(connectionString));
 }
 
-// 2. Configure CORS
+// 2. Configure CORS (set CORS_ALLOWED_ORIGINS on Render, e.g. https://inter-prep-tau.vercel.app)
+var corsOriginsConfig = builder.Configuration["CORS_ALLOWED_ORIGINS"]
+    ?? Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS");
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.AllowAnyHeader().AllowAnyMethod();
+
+        if (string.IsNullOrWhiteSpace(corsOriginsConfig))
+        {
+            policy.SetIsOriginAllowed(_ => true);
+        }
+        else
+        {
+            var origins = corsOriginsConfig.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            policy.WithOrigins(origins);
+        }
     });
 });
 
@@ -226,8 +237,8 @@ else
     app.Urls.Add("http://localhost:5100");
 }
 
-app.UseCors("AllowAll");
 app.UseRouting();
+app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
 

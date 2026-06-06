@@ -1,0 +1,23 @@
+# Node.js / Vite / Frontend
+node_modules/
+dist/
+.env.local
+.env.production.local
+.env.development.local
+
+# ASP.NET Core / .NET / Backend
+bin/
+obj/
+*.user
+topic_hub.db
+topic_hub.db-journal
+topic_hub.db-shm
+topic_hub.db-wal
+appsettings.Development.json
+
+# IDE / Editor Files
+.vs/
+.vscode/
+*.suo
+*.useros
+*.sln.docstates

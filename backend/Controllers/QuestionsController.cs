@@ -26,8 +26,6 @@ namespace backend.Controllers
             [FromQuery] int? topicId, 
             [FromQuery] string? difficulty)
         {
-            await _context.Database.EnsureCreatedAsync();
-
             IQueryable<Question> query = _context.Questions;
             if (topicId.HasValue && topicId.Value > 0)
             {

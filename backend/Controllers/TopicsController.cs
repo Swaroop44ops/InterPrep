@@ -22,10 +22,6 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Topic>>> GetTopics()
         {
-            // Automatically creates the database and seeds the data if they don't exist yet.
-            // This simplifies the initial verification process for Phase 1.
-            await _context.Database.EnsureCreatedAsync();
-            
             var topics = await _context.Topics.ToListAsync();
             return Ok(topics);
         }

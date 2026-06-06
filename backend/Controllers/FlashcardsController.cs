@@ -24,8 +24,6 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Flashcard>>> GetFlashcards([FromQuery] int? topicId)
         {
-            await _context.Database.EnsureCreatedAsync();
-
             IQueryable<Flashcard> query = _context.Flashcards;
             if (topicId.HasValue && topicId.Value > 0)
             {

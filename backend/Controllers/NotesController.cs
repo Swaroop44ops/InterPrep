@@ -24,9 +24,6 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Note>>> GetNotes([FromQuery] int? topicId)
         {
-            // Auto-creation of DB schema (handles initial setup cleanly)
-            await _context.Database.EnsureCreatedAsync();
-
             IQueryable<Note> query = _context.Notes;
             if (topicId.HasValue && topicId.Value > 0)
             {

@@ -24,7 +24,6 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<StudySession>>> GetStudySessions()
         {
-            await _context.Database.EnsureCreatedAsync();
             return await _context.StudySessions.OrderByDescending(s => s.CreatedAt).ToListAsync();
         }
 
@@ -48,8 +47,6 @@ namespace backend.Controllers
         [HttpGet("stats")]
         public async Task<IActionResult> GetStats()
         {
-            await _context.Database.EnsureCreatedAsync();
-
             // 1. Group historical sessions by date to build the heatmap data source
             var sessions = await _context.StudySessions.ToListAsync();
             var heatmap = sessions

@@ -7,10 +7,10 @@ EXPOSE 443
 # SDK image for building the application
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
-COPY ["backend.csproj", "."]
-RUN dotnet restore "./backend.csproj"
+COPY ["backend/backend.csproj", "backend/"]
+RUN dotnet restore "backend/backend.csproj"
 COPY . .
-WORKDIR "/src/."
+WORKDIR "/src/backend"
 RUN dotnet build "backend.csproj" -c Release -o /app/build
 
 # Publish stage

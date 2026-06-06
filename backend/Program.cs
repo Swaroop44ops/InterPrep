@@ -27,28 +27,13 @@ else
 }
 
 // 2. Configure CORS
-var allowedOriginsSetting = builder.Configuration.GetValue<string>("CORS_ALLOWED_ORIGINS")
-                             ?? Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS")
-                             ?? "*";
-
-var origins = allowedOriginsSetting.Split(',', StringSplitOptions.RemoveEmptyEntries);
-
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        if (allowedOriginsSetting == "*" || allowedOriginsSetting.Contains("*"))
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        }
-        else
-        {
-            policy.WithOrigins(origins)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        }
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
     });
 });
 
@@ -116,8 +101,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors();
-
 // For Render deployment, bind to PORT environment variable if available
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrEmpty(port))
@@ -129,6 +112,8 @@ else
     app.Urls.Add("http://localhost:5100");
 }
 
+app.UseRouting();
+app.UseCors("AllowAll");
 app.UseAuthorization();
 app.MapControllers();
 

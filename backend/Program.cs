@@ -29,7 +29,7 @@ else
 // 2. Configure CORS
 var allowedOriginsSetting = builder.Configuration.GetValue<string>("CORS_ALLOWED_ORIGINS")
                              ?? Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS")
-                             ?? "https://inter-prep-tau.vercel.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175,http://localhost:3000";
+                             ?? "*";
 
 var origins = allowedOriginsSetting.Split(',', StringSplitOptions.RemoveEmptyEntries);
 

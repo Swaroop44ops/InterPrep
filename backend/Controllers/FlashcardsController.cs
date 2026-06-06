@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using backend.Data;
 using backend.Models;
-using System;
+using backend.Services.Interfaces;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace backend.Controllers
@@ -13,24 +10,21 @@ namespace backend.Controllers
     [Route("api/[controller]")]
     public class FlashcardsController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly IFlashcardService _flashcardService;
+        private readonly ITopicService _topicService;
 
-        public FlashcardsController(AppDbContext context)
+        public FlashcardsController(IFlashcardService flashcardService, ITopicService topicService)
         {
-            _context = context;
+            _flashcardService = flashcardService;
+            _topicService = topicService;
         }
 
         // GET: api/flashcards?topicId=1
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Flashcard>>> GetFlashcards([FromQuery] int? topicId)
         {
-            IQueryable<Flashcard> query = _context.Flashcards;
-            if (topicId.HasValue && topicId.Value > 0)
-            {
-                query = query.Where(f => f.TopicId == topicId.Value);
-            }
-
-            return await query.ToListAsync();
+            var cards = await _flashcardService.GetFlashcardsAsync(topicId);
+            return Ok(cards);
         }
 
         // POST: api/flashcards
@@ -42,55 +36,31 @@ namespace backend.Controllers
                 return BadRequest(ModelState);
             }
 
-            var topicExists = await _context.Topics.AnyAsync(t => t.Id == flashcard.TopicId);
+            var topicExists = await _topicService.TopicExistsAsync(flashcard.TopicId);
             if (!topicExists)
             {
                 return BadRequest("Invalid Topic ID.");
             }
 
-            flashcard.NextReviewDate = DateTime.UtcNow; // Default due immediately
-            flashcard.IntervalDays = 1;
-            flashcard.CreatedAt = DateTime.UtcNow;
-
-            _context.Flashcards.Add(flashcard);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetFlashcardById), new { id = flashcard.Id }, flashcard);
+            var createdCard = await _flashcardService.CreateFlashcardAsync(flashcard);
+            return CreatedAtAction(nameof(GetFlashcardById), new { id = createdCard.Id }, createdCard);
         }
 
         // GET: api/flashcards/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Flashcard>> GetFlashcardById(int id)
         {
-            var card = await _context.Flashcards.FindAsync(id);
+            var card = await _flashcardService.GetFlashcardByIdAsync(id);
             if (card == null) return NotFound();
-            return card;
+            return Ok(card);
         }
 
         // POST: api/flashcards/5/review?quality=easy
         [HttpPost("{id}/review")]
         public async Task<ActionResult<Flashcard>> ReviewFlashcard(int id, [FromQuery] string quality)
         {
-            var card = await _context.Flashcards.FindAsync(id);
-            if (card == null)
-            {
-                return NotFound();
-            }
-
-            if (string.Equals(quality, "easy", StringComparison.OrdinalIgnoreCase))
-            {
-                // Double the interval and push the review date out
-                card.IntervalDays = Math.Max(1, card.IntervalDays * 2);
-                card.NextReviewDate = DateTime.UtcNow.AddDays(card.IntervalDays);
-            }
-            else // "hard" or default
-            {
-                // Reset interval to 1 day
-                card.IntervalDays = 1;
-                card.NextReviewDate = DateTime.UtcNow.AddDays(1);
-            }
-
-            await _context.SaveChangesAsync();
+            var card = await _flashcardService.ReviewFlashcardAsync(id, quality);
+            if (card == null) return NotFound();
             return Ok(card);
         }
 
@@ -98,12 +68,8 @@ namespace backend.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteFlashcard(int id)
         {
-            var card = await _context.Flashcards.FindAsync(id);
-            if (card == null) return NotFound();
-
-            _context.Flashcards.Remove(card);
-            await _context.SaveChangesAsync();
-
+            var deleted = await _flashcardService.DeleteFlashcardAsync(id);
+            if (!deleted) return NotFound();
             return NoContent();
         }
     }

@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using backend.Data;
 using backend.Models;
-using System;
+using backend.Services.Interfaces;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace backend.Controllers
@@ -13,38 +10,33 @@ namespace backend.Controllers
     [Route("api/[controller]")]
     public class NotesController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly INoteService _noteService;
+        private readonly ITopicService _topicService;
 
-        public NotesController(AppDbContext context)
+        public NotesController(INoteService noteService, ITopicService topicService)
         {
-            _context = context;
+            _noteService = noteService;
+            _topicService = topicService;
         }
 
         // GET: api/notes?topicId=1
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Note>>> GetNotes([FromQuery] int? topicId)
         {
-            IQueryable<Note> query = _context.Notes;
-            if (topicId.HasValue && topicId.Value > 0)
-            {
-                query = query.Where(n => n.TopicId == topicId.Value);
-            }
-            
-            return await query.OrderByDescending(n => n.UpdatedAt).ToListAsync();
+            var notes = await _noteService.GetNotesAsync(topicId);
+            return Ok(notes);
         }
 
         // GET: api/notes/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Note>> GetNote(int id)
         {
-            var note = await _context.Notes.FindAsync(id);
-
+            var note = await _noteService.GetNoteByIdAsync(id);
             if (note == null)
             {
                 return NotFound();
             }
-
-            return note;
+            return Ok(note);
         }
 
         // POST: api/notes
@@ -56,20 +48,14 @@ namespace backend.Controllers
                 return BadRequest(ModelState);
             }
 
-            // Verify topic exists before attaching note to it
-            var topicExists = await _context.Topics.AnyAsync(t => t.Id == note.TopicId);
+            var topicExists = await _topicService.TopicExistsAsync(note.TopicId);
             if (!topicExists)
             {
                 return BadRequest("Invalid Topic ID. Topic does not exist.");
             }
 
-            note.CreatedAt = DateTime.UtcNow;
-            note.UpdatedAt = DateTime.UtcNow;
-
-            _context.Notes.Add(note);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetNote), new { id = note.Id }, note);
+            var createdNote = await _noteService.CreateNoteAsync(note);
+            return CreatedAtAction(nameof(GetNote), new { id = createdNote.Id }, createdNote);
         }
 
         // PUT: api/notes/5
@@ -81,61 +67,31 @@ namespace backend.Controllers
                 return BadRequest(ModelState);
             }
 
-            var note = await _context.Notes.FindAsync(id);
-            if (note == null)
-            {
-                return NotFound("Note not found");
-            }
-
-            var topicExists = await _context.Topics.AnyAsync(t => t.Id == updatedNote.TopicId);
+            var topicExists = await _topicService.TopicExistsAsync(updatedNote.TopicId);
             if (!topicExists)
             {
                 return BadRequest("Invalid Topic ID. Topic does not exist.");
             }
 
-            note.Title = updatedNote.Title;
-            note.Content = updatedNote.Content;
-            note.TopicId = updatedNote.TopicId;
-            note.UpdatedAt = DateTime.UtcNow;
-
-            try
+            var result = await _noteService.UpdateNoteAsync(id, updatedNote);
+            if (result == null)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!NoteExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("Note not found");
             }
 
-            return Ok(note);
+            return Ok(result);
         }
 
         // DELETE: api/notes/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteNote(int id)
         {
-            var note = await _context.Notes.FindAsync(id);
-            if (note == null)
+            var deleted = await _noteService.DeleteNoteAsync(id);
+            if (!deleted)
             {
                 return NotFound();
             }
-
-            _context.Notes.Remove(note);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool NoteExists(int id)
-        {
-            return _context.Notes.Any(e => e.Id == id);
         }
     }
 }

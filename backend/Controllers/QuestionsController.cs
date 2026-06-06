@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using backend.Data;
 using backend.Models;
-using System;
+using backend.Services.Interfaces;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace backend.Controllers
@@ -13,11 +10,13 @@ namespace backend.Controllers
     [Route("api/[controller]")]
     public class QuestionsController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly IQuestionService _questionService;
+        private readonly ITopicService _topicService;
 
-        public QuestionsController(AppDbContext context)
+        public QuestionsController(IQuestionService questionService, ITopicService topicService)
         {
-            _context = context;
+            _questionService = questionService;
+            _topicService = topicService;
         }
 
         // GET: api/questions?topicId=1&difficulty=Medium
@@ -26,18 +25,8 @@ namespace backend.Controllers
             [FromQuery] int? topicId, 
             [FromQuery] string? difficulty)
         {
-            IQueryable<Question> query = _context.Questions;
-            if (topicId.HasValue && topicId.Value > 0)
-            {
-                query = query.Where(q => q.TopicId == topicId.Value);
-            }
-
-            if (!string.IsNullOrEmpty(difficulty))
-            {
-                query = query.Where(q => q.Difficulty.ToLower() == difficulty.ToLower());
-            }
-
-            return await query.ToListAsync();
+            var questions = await _questionService.GetQuestionsAsync(topicId, difficulty);
+            return Ok(questions);
         }
 
         // POST: api/questions
@@ -49,65 +38,40 @@ namespace backend.Controllers
                 return BadRequest(ModelState);
             }
 
-            var topicExists = await _context.Topics.AnyAsync(t => t.Id == question.TopicId);
+            var topicExists = await _topicService.TopicExistsAsync(question.TopicId);
             if (!topicExists)
             {
                 return BadRequest("Invalid Topic ID.");
             }
 
-            question.Status = "Unseen"; // Default
-            question.CreatedAt = DateTime.UtcNow;
-
-            _context.Questions.Add(question);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetQuestionById), new { id = question.Id }, question);
+            var createdQuestion = await _questionService.CreateQuestionAsync(question);
+            return CreatedAtAction(nameof(GetQuestionById), new { id = createdQuestion.Id }, createdQuestion);
         }
 
         // GET: api/questions/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Question>> GetQuestionById(int id)
         {
-            var question = await _context.Questions.FindAsync(id);
+            var question = await _questionService.GetQuestionByIdAsync(id);
             if (question == null) return NotFound();
-            return question;
+            return Ok(question);
         }
 
         // PUT: api/questions/5/status
         [HttpPut("{id}/status")]
         public async Task<ActionResult<Question>> UpdateQuestionStatus(int id, [FromBody] string status)
         {
-            var question = await _context.Questions.FindAsync(id);
-            if (question == null)
-            {
-                return NotFound();
-            }
-
-            // Standardize and validate status value
-            var formattedStatus = string.Empty;
-            if (string.Equals(status, "confident", StringComparison.OrdinalIgnoreCase))
-                formattedStatus = "Confident";
-            else if (string.Equals(status, "attempted", StringComparison.OrdinalIgnoreCase))
-                formattedStatus = "Attempted";
-            else
-                formattedStatus = "Unseen";
-
-            question.Status = formattedStatus;
-            await _context.SaveChangesAsync();
-
-            return Ok(question);
+            var updated = await _questionService.UpdateQuestionStatusAsync(id, status);
+            if (updated == null) return NotFound();
+            return Ok(updated);
         }
 
         // DELETE: api/questions/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteQuestion(int id)
         {
-            var question = await _context.Questions.FindAsync(id);
-            if (question == null) return NotFound();
-
-            _context.Questions.Remove(question);
-            await _context.SaveChangesAsync();
-
+            var deleted = await _questionService.DeleteQuestionAsync(id);
+            if (!deleted) return NotFound();
             return NoContent();
         }
     }

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using backend.Data;
 using backend.Models;
+using backend.Services.Interfaces;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -11,18 +10,18 @@ namespace backend.Controllers
     [Route("api/[controller]")]
     public class TopicsController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly ITopicService _topicService;
 
-        public TopicsController(AppDbContext context)
+        public TopicsController(ITopicService topicService)
         {
-            _context = context;
+            _topicService = topicService;
         }
 
         // GET: api/topics
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Topic>>> GetTopics()
         {
-            var topics = await _context.Topics.ToListAsync();
+            var topics = await _topicService.GetTopicsAsync();
             return Ok(topics);
         }
     }

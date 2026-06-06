@@ -5,6 +5,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using backend.Data;
 using backend.Models;
+using backend.Repositories.Interfaces;
+using backend.Repositories.Implementations;
+using backend.Services.Interfaces;
+using backend.Services.Implementations;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -39,6 +43,21 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
+
+// Register clean architecture dependencies
+// 1. Repositories
+builder.Services.AddScoped<ITopicRepository, TopicRepository>();
+builder.Services.AddScoped<INoteRepository, NoteRepository>();
+builder.Services.AddScoped<IFlashcardRepository, FlashcardRepository>();
+builder.Services.AddScoped<IQuestionRepository, QuestionRepository>();
+builder.Services.AddScoped<IStudySessionRepository, StudySessionRepository>();
+
+// 2. Services
+builder.Services.AddScoped<ITopicService, TopicService>();
+builder.Services.AddScoped<INoteService, NoteService>();
+builder.Services.AddScoped<IFlashcardService, FlashcardService>();
+builder.Services.AddScoped<IQuestionService, QuestionService>();
+builder.Services.AddScoped<IStudySessionService, StudySessionService>();
 
 // Add standard API services
 builder.Services.AddControllers();

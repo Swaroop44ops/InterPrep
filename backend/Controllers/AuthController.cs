@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using backend.Models;
 using backend.Services;
 using backend.Services.Interfaces;
+using System;
 using System.Threading.Tasks;
 using System.Linq;
 
@@ -12,10 +14,12 @@ namespace backend.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IUserService userService)
+        public AuthController(IUserService userService, ILogger<AuthController> logger)
         {
             _userService = userService;
+            _logger = logger;
         }
 
         public class AuthRequest
@@ -26,39 +30,64 @@ namespace backend.Controllers
 
         // POST: api/auth/register
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] AuthRequest request)
+        public async Task<IActionResult> Register([FromBody] AuthRequest? request)
         {
-            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            if (request == null)
             {
-                return BadRequest("Username and Password are required.");
+                return BadRequest("Request body is required.");
             }
 
-            var user = await _userService.RegisterAsync(request.Username, request.Password);
-            if (user == null)
+            try
             {
-                return BadRequest("Username is already taken.");
-            }
+                if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+                {
+                    return BadRequest("Username and Password are required.");
+                }
 
-            // Return user details without password hash for security
-            return Ok(new { id = user.Id, username = user.Username, createdAt = user.CreatedAt });
+                var user = await _userService.RegisterAsync(request.Username, request.Password);
+                if (user == null)
+                {
+                    return BadRequest("Username is already taken.");
+                }
+
+                return Ok(new { id = user.Id, username = user.Username, createdAt = user.CreatedAt });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Registration failed for username {Username}", request.Username);
+                return StatusCode(500, "Registration failed. Please try again.");
+            }
         }
 
         // POST: api/auth/login
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] AuthRequest request)
+        public async Task<IActionResult> Login([FromBody] AuthRequest? request)
         {
-            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            if (request == null)
             {
-                return BadRequest("Username and Password are required.");
+                return BadRequest("Request body is required.");
             }
 
-            var user = await _userService.LoginAsync(request.Username, request.Password);
-            if (user == null)
+            try
             {
-                return Unauthorized("Invalid username or password.");
-            }
+                if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+                {
+                    return BadRequest("Username and Password are required.");
+                }
 
-            return Ok(new { id = user.Id, username = user.Username, message = "Login successful!" });
+                var user = await _userService.LoginAsync(request.Username, request.Password);
+                if (user == null)
+                {
+                    return Unauthorized("Invalid username or password.");
+                }
+
+                return Ok(new { id = user.Id, username = user.Username, message = "Login successful!" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Login failed for username {Username}", request.Username);
+                return StatusCode(500, "Login failed. Please try again.");
+            }
         }
 
         // GET: api/auth/users

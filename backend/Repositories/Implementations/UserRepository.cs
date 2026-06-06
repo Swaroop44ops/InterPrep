@@ -18,7 +18,7 @@ namespace backend.Repositories.Implementations
 
         public async Task<User?> GetByUsernameAsync(string username)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
         }
 
         public async Task<User> AddAsync(User user)

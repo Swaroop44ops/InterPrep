@@ -44,6 +44,7 @@ export default function LoginView({ apiUrl, onLoginSuccess }: LoginViewProps) {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ username, password }),
       });
 

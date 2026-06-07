@@ -60,6 +60,7 @@ function App() {
   const [cardsReviewedCount, setCardsReviewedCount] = useState(0);
   const [questionsAttemptedCount, setQuestionsAttemptedCount] = useState(0);
   const [sessionTrigger, setSessionTrigger] = useState(0); // Triggers dashboard heatmap re-fetch
+  const [secondsUntilLogout, setSecondsUntilLogout] = useState<number>(15 * 60);
 
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5100';
 
@@ -181,33 +182,42 @@ function App() {
     setActiveTab(tab);
   };
 
-  // 4. Inactivity Idle Timeout Hook (Option C - 15 minutes)
+  // 4. Inactivity Idle Timeout Hook (Option C - 15 minutes with countdown timer)
   useEffect(() => {
     if (!activeUser) return;
 
-    let timeoutId: any;
-
-    const resetTimer = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        console.log("Inactivity timeout reached. Logging out...");
-        handleLogout();
-      }, 15 * 60 * 1000);
+    const resetInactivity = () => {
+      setSecondsUntilLogout(15 * 60);
     };
 
     const events = ['mousemove', 'keydown', 'mousedown', 'scroll', 'click'];
     events.forEach((event) => {
-      window.addEventListener(event, resetTimer);
+      window.addEventListener(event, resetInactivity);
     });
 
-    resetTimer();
-
     return () => {
-      clearTimeout(timeoutId);
       events.forEach((event) => {
-        window.removeEventListener(event, resetTimer);
+        window.removeEventListener(event, resetInactivity);
       });
     };
+  }, [activeUser]);
+
+  useEffect(() => {
+    if (!activeUser) return;
+
+    const interval = setInterval(() => {
+      setSecondsUntilLogout((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          console.log("Inactivity timeout reached. Logging out...");
+          handleLogout();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [activeUser]);
 
   // 4. Notebook CRUD Handlers
@@ -402,6 +412,10 @@ function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-cyan)' }}></span>
             Study Timer: {Math.floor(durationSeconds / 60)}m {durationSeconds % 60}s
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', borderLeft: '1px solid var(--border-color)', paddingLeft: '1.25rem' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: secondsUntilLogout < 60 ? '#ff7675' : '#f39c12' }}></span>
+            Auto-logout in: {Math.floor(secondsUntilLogout / 60)}m {secondsUntilLogout % 60}s
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderLeft: '1px solid var(--border-color)', paddingLeft: '1.25rem' }}>
             <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>👤 {activeUser.username}</span>

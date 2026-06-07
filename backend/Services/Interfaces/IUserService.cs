@@ -9,5 +9,8 @@ namespace backend.Services.Interfaces
         Task<User?> RegisterAsync(string username, string password);
         Task<User?> LoginAsync(string username, string password);
         Task<IEnumerable<User>> GetAllUsersAsync();
+        Task SaveRefreshTokenAsync(int userId, string token, DateTime expiry);
+        Task<User?> GetUserByRefreshTokenAsync(string token);
+        Task RevokeRefreshTokenAsync(int userId);
     }
 }

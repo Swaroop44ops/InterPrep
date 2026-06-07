@@ -111,5 +111,33 @@ namespace backend.Services.Implementations
         {
             return await _userRepository.GetAllUsersAsync();
         }
+
+        public async Task SaveRefreshTokenAsync(int userId, string token, DateTime expiry)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user != null)
+            {
+                user.RefreshToken = token;
+                user.RefreshTokenExpiry = expiry;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<User?> GetUserByRefreshTokenAsync(string token)
+        {
+            if (string.IsNullOrEmpty(token)) return null;
+            return await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == token);
+        }
+
+        public async Task RevokeRefreshTokenAsync(int userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user != null)
+            {
+                user.RefreshToken = null;
+                user.RefreshTokenExpiry = null;
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

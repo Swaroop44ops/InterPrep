@@ -1,11 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using backend.Models;
 using backend.Services.Interfaces;
+using System;
 using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace backend.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class NotesController : ControllerBase
@@ -19,33 +23,31 @@ namespace backend.Controllers
             _topicService = topicService;
         }
 
+        private int GetUserId()
+        {
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (claim == null || !int.TryParse(claim.Value, out var userId))
+            {
+                throw new InvalidOperationException("User ID claim is missing or invalid.");
+            }
+            return userId;
+        }
+
         // GET: api/notes?topicId=1
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Note>>> GetNotes(
-            [FromHeader(Name = "X-User-Id")] int? userId,
-            [FromQuery] int? topicId)
+        public async Task<ActionResult<IEnumerable<Note>>> GetNotes([FromQuery] int? topicId)
         {
-            if (!userId.HasValue || userId.Value <= 0)
-            {
-                return Unauthorized("Missing or invalid user context (X-User-Id header).");
-            }
-
-            var notes = await _noteService.GetNotesAsync(topicId, userId.Value);
+            var userId = GetUserId();
+            var notes = await _noteService.GetNotesAsync(topicId, userId);
             return Ok(notes);
         }
 
         // GET: api/notes/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Note>> GetNote(
-            [FromHeader(Name = "X-User-Id")] int? userId,
-            int id)
+        public async Task<ActionResult<Note>> GetNote(int id)
         {
-            if (!userId.HasValue || userId.Value <= 0)
-            {
-                return Unauthorized("Missing or invalid user context (X-User-Id header).");
-            }
-
-            var note = await _noteService.GetNoteByIdAsync(id, userId.Value);
+            var userId = GetUserId();
+            var note = await _noteService.GetNoteByIdAsync(id, userId);
             if (note == null)
             {
                 return NotFound();
@@ -55,15 +57,9 @@ namespace backend.Controllers
 
         // POST: api/notes
         [HttpPost]
-        public async Task<ActionResult<Note>> CreateNote(
-            [FromHeader(Name = "X-User-Id")] int? userId,
-            [FromBody] Note note)
+        public async Task<ActionResult<Note>> CreateNote([FromBody] Note note)
         {
-            if (!userId.HasValue || userId.Value <= 0)
-            {
-                return Unauthorized("Missing or invalid user context (X-User-Id header).");
-            }
-
+            var userId = GetUserId();
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -75,22 +71,15 @@ namespace backend.Controllers
                 return BadRequest("Invalid Topic ID. Topic does not exist.");
             }
 
-            var createdNote = await _noteService.CreateNoteAsync(note, userId.Value);
+            var createdNote = await _noteService.CreateNoteAsync(note, userId);
             return CreatedAtAction(nameof(GetNote), new { id = createdNote.Id }, createdNote);
         }
 
         // PUT: api/notes/5
         [HttpPut("{id}")]
-        public async Task<ActionResult<Note>> UpdateNote(
-            [FromHeader(Name = "X-User-Id")] int? userId,
-            int id,
-            [FromBody] Note updatedNote)
+        public async Task<ActionResult<Note>> UpdateNote(int id, [FromBody] Note updatedNote)
         {
-            if (!userId.HasValue || userId.Value <= 0)
-            {
-                return Unauthorized("Missing or invalid user context (X-User-Id header).");
-            }
-
+            var userId = GetUserId();
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -102,7 +91,7 @@ namespace backend.Controllers
                 return BadRequest("Invalid Topic ID. Topic does not exist.");
             }
 
-            var result = await _noteService.UpdateNoteAsync(id, updatedNote, userId.Value);
+            var result = await _noteService.UpdateNoteAsync(id, updatedNote, userId);
             if (result == null)
             {
                 return NotFound("Note not found");
@@ -113,16 +102,10 @@ namespace backend.Controllers
 
         // DELETE: api/notes/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteNote(
-            [FromHeader(Name = "X-User-Id")] int? userId,
-            int id)
+        public async Task<IActionResult> DeleteNote(int id)
         {
-            if (!userId.HasValue || userId.Value <= 0)
-            {
-                return Unauthorized("Missing or invalid user context (X-User-Id header).");
-            }
-
-            var deleted = await _noteService.DeleteNoteAsync(id, userId.Value);
+            var userId = GetUserId();
+            var deleted = await _noteService.DeleteNoteAsync(id, userId);
             if (!deleted)
             {
                 return NotFound();

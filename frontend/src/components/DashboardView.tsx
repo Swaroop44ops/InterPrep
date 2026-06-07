@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import CalendarHeatmap from 'react-calendar-heatmap';
 import 'react-calendar-heatmap/dist/styles.css';
+import apiFetch from '../api';
+
 
 interface StudySession {
   id: number;
@@ -31,14 +33,12 @@ interface StatsData {
 interface DashboardViewProps {
   topics: Topic[];
   apiUrl: string;
-  userId: number;
   sessionTrigger: number; // Used to trigger refresh when parent logs a session
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   topics,
   apiUrl,
-  userId,
   sessionTrigger,
 }) => {
   const [sessions, setSessions] = useState<StudySession[]>([]);
@@ -49,21 +49,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setLoading(true);
     try {
       // Fetch study logs
-      const sessionsRes = await fetch(`${apiUrl}/api/studysessions`, {
-        headers: {
-          'X-User-Id': userId.toString()
-        }
-      });
+      const sessionsRes = await apiFetch(`${apiUrl}/api/studysessions`);
       if (!sessionsRes.ok) throw new Error('Failed to load study sessions');
       const sessionsData = await sessionsRes.json();
       setSessions(sessionsData);
 
       // Fetch aggregated analytics (heatmap, due cards, confident questions)
-      const statsRes = await fetch(`${apiUrl}/api/studysessions/stats`, {
-        headers: {
-          'X-User-Id': userId.toString()
-        }
-      });
+      const statsRes = await apiFetch(`${apiUrl}/api/studysessions/stats`);
       if (!statsRes.ok) throw new Error('Failed to load stats');
       const statsData = await statsRes.json();
       setStats(statsData);

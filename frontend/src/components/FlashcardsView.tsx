@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import apiFetch from '../api';
 
 interface Flashcard {
   id: number;
@@ -17,14 +18,12 @@ interface Topic {
 interface FlashcardsViewProps {
   topics: Topic[];
   apiUrl: string;
-  userId: number;
   onCardReviewed: () => void; // Call parent to track study stats
 }
 
 export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
   topics,
   apiUrl,
-  userId,
   onCardReviewed,
 }) => {
   const [cards, setCards] = useState<Flashcard[]>([]);
@@ -42,11 +41,7 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
   const fetchCards = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/api/flashcards`, {
-        headers: {
-          'X-User-Id': userId.toString()
-        }
-      });
+      const res = await apiFetch(`${apiUrl}/api/flashcards`);
       if (!res.ok) throw new Error('Failed to load flashcards');
       const data: Flashcard[] = await res.json();
       setCards(data);
@@ -77,11 +72,8 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
     const currentCard = displayedCards[currentIdx];
 
     try {
-      const res = await fetch(`${apiUrl}/api/flashcards/${currentCard.id}/review?quality=${quality}`, {
+      const res = await apiFetch(`${apiUrl}/api/flashcards/${currentCard.id}/review?quality=${quality}`, {
         method: 'POST',
-        headers: {
-          'X-User-Id': userId.toString()
-        }
       });
       if (!res.ok) throw new Error('Failed to review card');
       const updatedCard = await res.json();
@@ -118,11 +110,10 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
     };
 
     try {
-      const res = await fetch(`${apiUrl}/api/flashcards`, {
+      const res = await apiFetch(`${apiUrl}/api/flashcards`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'X-User-Id': userId.toString()
         },
         body: JSON.stringify(payload),
       });

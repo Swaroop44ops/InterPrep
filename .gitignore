@@ -21,3 +21,8 @@ appsettings.Development.json
 *.suo
 *.useros
 *.sln.docstates
+
+# Custom build folders
+build-check/
+backend/build-check/
+

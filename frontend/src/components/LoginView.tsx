@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 interface UserInfo {
   id: number;
   username: string;
+  accessToken: string;
 }
 
 interface LoginViewProps {
@@ -47,7 +48,7 @@ export default function LoginView({ apiUrl, onLoginSuccess }: LoginViewProps) {
       });
 
       const responseText = await res.text();
-      let data: { message?: string; id?: number; username?: string } = {};
+      let data: { message?: string; id?: number; username?: string; accessToken?: string } = {};
       try {
         data = responseText ? JSON.parse(responseText) : {};
       } catch {
@@ -64,10 +65,10 @@ export default function LoginView({ apiUrl, onLoginSuccess }: LoginViewProps) {
         setPassword('');
         setConfirmPassword('');
       } else {
-        if (data.id == null || !data.username) {
+        if (data.id == null || !data.username || !data.accessToken) {
           throw new Error('Login response was missing user details.');
         }
-        onLoginSuccess({ id: data.id, username: data.username });
+        onLoginSuccess({ id: data.id, username: data.username, accessToken: data.accessToken });
       }
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');

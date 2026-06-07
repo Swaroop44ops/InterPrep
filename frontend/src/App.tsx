@@ -6,6 +6,7 @@ import FlashcardsView from './components/FlashcardsView';
 import QuestionBankView from './components/QuestionBankView';
 import DashboardView from './components/DashboardView';
 import LoginView from './components/LoginView';
+import { apiFetch, setAccessToken, setOnLogoutCallback } from './api';
 
 interface Topic {
   id: number;
@@ -32,7 +33,7 @@ function App() {
 
   // Authentication State
   const [activeUser, setActiveUser] = useState<{ id: number; username: string } | null>(() => {
-    const saved = localStorage.getItem('activeUser');
+    const saved = sessionStorage.getItem('activeUser');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -76,20 +77,12 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      const topicsRes = await fetch(`${apiUrl}/api/topics`);
+      const topicsRes = await apiFetch(`${apiUrl}/api/topics`);
       if (!topicsRes.ok) throw new Error('Failed to fetch topics');
       const topicsData = await topicsRes.json();
       setTopics(topicsData);
 
-      const notesRes = await fetch(`${apiUrl}/api/notes`, {
-        headers: {
-          'X-User-Id': activeUser.id?.toString() || '',
-        },
-      });
-      if (notesRes.status === 401) {
-        handleLogout();
-        return;
-      }
+      const notesRes = await apiFetch(`${apiUrl}/api/notes`);
       if (!notesRes.ok) throw new Error('Failed to fetch notes');
       const notesData = await notesRes.json();
       setNotes(notesData);
@@ -105,12 +98,45 @@ function App() {
     }
   };
 
+  // Mount Session Restorer Hook
   useEffect(() => {
-    fetchData();
+    const restoreSession = async () => {
+      if (activeUser) {
+        setLoading(true);
+        try {
+          const res = await fetch(`${apiUrl}/api/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setAccessToken(data.accessToken);
+            setOnLogoutCallback(handleLogout);
+            await fetchData();
+          } else {
+            handleLogout();
+          }
+        } catch {
+          handleLogout();
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    restoreSession();
   }, [activeUser]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('activeUser');
+  const handleLogout = async () => {
+    try {
+      await fetch(`${apiUrl}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.error('Logout request failed on server:', err);
+    }
+    sessionStorage.removeItem('activeUser');
+    setAccessToken(null);
     setActiveUser(null);
     setTopics([]);
     setNotes([]);
@@ -131,19 +157,13 @@ function App() {
     };
 
     try {
-      const res = await fetch(`${apiUrl}/api/studysessions`, {
+      await apiFetch(`${apiUrl}/api/studysessions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-Id': activeUser.id?.toString() || '',
         },
         body: JSON.stringify(payload),
       });
-
-      if (res.status === 401) {
-        handleLogout();
-        return;
-      }
 
       // Reset session stats
       setDurationSeconds(0);
@@ -160,6 +180,35 @@ function App() {
     await logCurrentSession();
     setActiveTab(tab);
   };
+
+  // 4. Inactivity Idle Timeout Hook (Option C - 15 minutes)
+  useEffect(() => {
+    if (!activeUser) return;
+
+    let timeoutId: any;
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        console.log("Inactivity timeout reached. Logging out...");
+        handleLogout();
+      }, 15 * 60 * 1000);
+    };
+
+    const events = ['mousemove', 'keydown', 'mousedown', 'scroll', 'click'];
+    events.forEach((event) => {
+      window.addEventListener(event, resetTimer);
+    });
+
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach((event) => {
+        window.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [activeUser]);
 
   // 4. Notebook CRUD Handlers
   const displayedNotes = activeTopicId
@@ -182,19 +231,13 @@ function App() {
     };
 
     try {
-      const res = await fetch(`${apiUrl}/api/notes`, {
+      const res = await apiFetch(`${apiUrl}/api/notes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-Id': activeUser.id?.toString() || '',
         },
         body: JSON.stringify(newNotePayload),
       });
-
-      if (res.status === 401) {
-        handleLogout();
-        return;
-      }
 
       if (!res.ok) throw new Error('Failed to create note');
       const createdNote = await res.json();
@@ -222,46 +265,36 @@ function App() {
       isPublic: isPublic !== undefined ? isPublic : originalNote.isPublic,
     };
 
-    const res = await fetch(`${apiUrl}/api/notes/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-Id': activeUser.id?.toString() || '',
-      },
-      body: JSON.stringify(updatedPayload),
-    });
+    try {
+      const res = await apiFetch(`${apiUrl}/api/notes/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedPayload),
+      });
 
-    if (res.status === 401) {
-      handleLogout();
-      return;
+      if (!res.ok) throw new Error('Failed to save note');
+      const savedNote = await res.json();
+
+      setNotes((prev) => prev.map((n) => (n.id === id ? savedNote : n)));
+      if (activeNote && activeNote.id === id) {
+        setActiveNote(savedNote);
+      }
+      
+      // Log note review count increment
+      setNotesReviewedCount((prev) => prev + 1);
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
     }
-
-    if (!res.ok) throw new Error('Failed to save note');
-    const savedNote = await res.json();
-
-    setNotes((prev) => prev.map((n) => (n.id === id ? savedNote : n)));
-    if (activeNote && activeNote.id === id) {
-      setActiveNote(savedNote);
-    }
-    
-    // Log note review count increment
-    setNotesReviewedCount((prev) => prev + 1);
   };
 
   const handleDeleteNote = async (id: number) => {
     if (!activeUser) return;
     try {
-      const res = await fetch(`${apiUrl}/api/notes/${id}`, {
+      const res = await apiFetch(`${apiUrl}/api/notes/${id}`, {
         method: 'DELETE',
-        headers: {
-          'X-User-Id': activeUser.id?.toString() || '',
-        },
       });
-
-      if (res.status === 401) {
-        handleLogout();
-        return;
-      }
 
       if (!res.ok) throw new Error('Failed to delete note');
       setNotes((prev) => prev.filter((n) => n.id !== id));
@@ -281,8 +314,10 @@ function App() {
       <LoginView
         apiUrl={apiUrl}
         onLoginSuccess={(user) => {
-          setActiveUser(user);
-          localStorage.setItem('activeUser', JSON.stringify(user));
+          setAccessToken(user.accessToken);
+          setOnLogoutCallback(handleLogout);
+          setActiveUser({ id: user.id, username: user.username });
+          sessionStorage.setItem('activeUser', JSON.stringify({ id: user.id, username: user.username }));
         }}
       />
     );
@@ -417,7 +452,6 @@ function App() {
             <FlashcardsView
               topics={topics}
               apiUrl={apiUrl}
-              userId={activeUser.id}
               onCardReviewed={() => setCardsReviewedCount((prev) => prev + 1)}
             />
           </div>
@@ -429,7 +463,6 @@ function App() {
             <QuestionBankView
               topics={topics}
               apiUrl={apiUrl}
-              userId={activeUser.id}
               onQuestionAttempted={() => setQuestionsAttemptedCount((prev) => prev + 1)}
             />
           </div>
@@ -441,7 +474,6 @@ function App() {
             <DashboardView
               topics={topics}
               apiUrl={apiUrl}
-              userId={activeUser.id}
               sessionTrigger={sessionTrigger}
             />
           </div>

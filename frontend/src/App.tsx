@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import NotesList from './components/NotesList';
 import NoteEditor from './components/NoteEditor';
@@ -61,6 +61,7 @@ function App() {
   const [questionsAttemptedCount, setQuestionsAttemptedCount] = useState(0);
   const [sessionTrigger, setSessionTrigger] = useState(0); // Triggers dashboard heatmap re-fetch
   const [secondsUntilLogout, setSecondsUntilLogout] = useState<number>(15 * 60);
+  const lastActivityRef = useRef<number>(Date.now());
 
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5100';
 
@@ -182,11 +183,12 @@ function App() {
     setActiveTab(tab);
   };
 
-  // 4. Inactivity Idle Timeout Hook (Option C - 15 minutes with countdown timer)
+  // 4. Inactivity Idle Timeout Hook (Option C - 15 minutes with countdown timer based on absolute time differences)
   useEffect(() => {
     if (!activeUser) return;
 
     const resetInactivity = () => {
+      lastActivityRef.current = Date.now();
       setSecondsUntilLogout(15 * 60);
     };
 
@@ -206,15 +208,16 @@ function App() {
     if (!activeUser) return;
 
     const interval = setInterval(() => {
-      setSecondsUntilLogout((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          console.log("Inactivity timeout reached. Logging out...");
-          handleLogout();
-          return 0;
-        }
-        return prev - 1;
-      });
+      const elapsedMs = Date.now() - lastActivityRef.current;
+      const remainingSeconds = Math.max(0, Math.floor((15 * 60 * 1000 - elapsedMs) / 1000));
+      
+      setSecondsUntilLogout(remainingSeconds);
+
+      if (remainingSeconds <= 0) {
+        clearInterval(interval);
+        console.log("Inactivity timeout reached. Logging out...");
+        handleLogout();
+      }
     }, 1000);
 
     return () => clearInterval(interval);

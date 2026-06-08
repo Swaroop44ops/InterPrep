@@ -44,6 +44,10 @@ function App() {
     return null;
   });
 
+  const [isRestoringSession, setIsRestoringSession] = useState<boolean>(() => {
+    return sessionStorage.getItem('activeUser') !== null;
+  });
+
   // Notebook States
   const [topics, setTopics] = useState<Topic[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -103,7 +107,8 @@ function App() {
   // Mount Session Restorer Hook
   useEffect(() => {
     const restoreSession = async () => {
-      if (activeUser) {
+      const savedUser = sessionStorage.getItem('activeUser');
+      if (savedUser) {
         setLoading(true);
         try {
           const res = await fetch(`${apiUrl}/api/auth/refresh`, {
@@ -114,7 +119,6 @@ function App() {
             const data = await res.json();
             setAccessToken(data.accessToken);
             setOnLogoutCallback(handleLogout);
-            await fetchData();
           } else {
             handleLogout();
           }
@@ -122,21 +126,24 @@ function App() {
           handleLogout();
         } finally {
           setLoading(false);
+          setIsRestoringSession(false);
         }
+      } else {
+        setIsRestoringSession(false);
       }
     };
     restoreSession();
-  }, [activeUser]);
+  }, []); // Run ONLY once on mount
 
-  const handleLogout = async () => {
-    try {
-      await fetch(`${apiUrl}/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-    } catch (err) {
-      console.error('Logout request failed on server:', err);
+  // Initial Data Load on user login / session restore
+  useEffect(() => {
+    if (activeUser && !isRestoringSession) {
+      fetchData();
     }
+  }, [activeUser, isRestoringSession]);
+
+  const handleLogout = () => {
+    // 1. Immediately and synchronously clear all local state to update the UI
     sessionStorage.removeItem('activeUser');
     setAccessToken(null);
     setActiveUser(null);
@@ -144,6 +151,14 @@ function App() {
     setNotes([]);
     setActiveNote(null);
     setActiveTopicId(null);
+
+    // 2. Fire server logout request in background (non-blocking)
+    fetch(`${apiUrl}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch((err) => {
+      console.error('Logout request failed on server:', err);
+    });
   };
 
   // 3. Log Study Session on Tab Change

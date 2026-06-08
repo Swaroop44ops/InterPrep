@@ -48,33 +48,35 @@ namespace backend.Services.Implementations
                 })
                 .ToList();
 
-            // 2. Count confident questions per topic
+            // 2. Compute question stats (total, confident, attempted, unseen) per topic
             var questions = await _questionRepository.GetAllAsync(userId);
-            var confidentQuestions = questions
-                .Where(q => q.Status == "Confident")
+            var questionStats = questions
                 .GroupBy(q => q.TopicId)
                 .Select(g => new {
                     topicId = g.Key,
-                    count = g.Count()
+                    total = g.Count(),
+                    confident = g.Count(q => string.Equals(q.Status, "Confident", StringComparison.OrdinalIgnoreCase)),
+                    attempted = g.Count(q => string.Equals(q.Status, "Attempted", StringComparison.OrdinalIgnoreCase)),
+                    unseen = g.Count(q => string.Equals(q.Status, "Unseen", StringComparison.OrdinalIgnoreCase))
                 })
                 .ToList();
 
-            // 3. Count due flashcards per topic
+            // 3. Compute flashcard stats (total, due) per topic
             var flashcards = await _flashcardRepository.GetAllAsync(userId);
             var now = DateTime.UtcNow;
-            var dueFlashcards = flashcards
-                .Where(f => f.NextReviewDate <= now)
+            var flashcardStats = flashcards
                 .GroupBy(f => f.TopicId)
                 .Select(g => new {
                     topicId = g.Key,
-                    count = g.Count()
+                    total = g.Count(),
+                    due = g.Count(f => f.NextReviewDate <= now)
                 })
                 .ToList();
 
             return new {
                 heatmap = heatmap,
-                confidentQuestions = confidentQuestions,
-                dueFlashcards = dueFlashcards
+                questionStats = questionStats,
+                flashcardStats = flashcardStats
             };
         }
     }

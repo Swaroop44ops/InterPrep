@@ -24,10 +24,24 @@ interface HeatmapValue {
   duration: number;
 }
 
+interface QuestionStat {
+  topicId: number;
+  total: number;
+  confident: number;
+  attempted: number;
+  unseen: number;
+}
+
+interface FlashcardStat {
+  topicId: number;
+  total: number;
+  due: number;
+}
+
 interface StatsData {
   heatmap: HeatmapValue[];
-  confidentQuestions: { topicId: number; count: number }[];
-  dueFlashcards: { topicId: number; count: number }[];
+  questionStats: QuestionStat[];
+  flashcardStats: FlashcardStat[];
 }
 
 interface DashboardViewProps {
@@ -42,7 +56,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   sessionTrigger,
 }) => {
   const [sessions, setSessions] = useState<StudySession[]>([]);
-  const [stats, setStats] = useState<StatsData>({ heatmap: [], confidentQuestions: [], dueFlashcards: [] });
+  const [stats, setStats] = useState<StatsData>({ heatmap: [], questionStats: [], flashcardStats: [] });
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = async () => {
@@ -92,11 +106,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalCardsReviewed = sessions.reduce((acc, s) => acc + s.cardsReviewedCount, 0);
   const totalQuestionsAttempted = sessions.reduce((acc, s) => acc + s.questionsAttemptedCount, 0);
 
-  // Find due cards / confident counts for a specific topic
+  // Find detailed stats for a specific topic
   const getTopicStats = (topicId: number) => {
-    const confident = stats.confidentQuestions.find(cq => cq.topicId === topicId)?.count || 0;
-    const due = stats.dueFlashcards.find(df => df.topicId === topicId)?.count || 0;
-    return { confident, due };
+    const qStat = stats.questionStats?.find(qs => qs.topicId === topicId);
+    const fStat = stats.flashcardStats?.find(fs => fs.topicId === topicId);
+    return {
+      confident: qStat?.confident || 0,
+      attempted: qStat?.attempted || 0,
+      unseen: qStat?.unseen || 0,
+      totalQuestions: qStat?.total || 0,
+      dueFlashcards: fStat?.due || 0,
+      totalFlashcards: fStat?.total || 0
+    };
   };
 
   if (loading) {
@@ -173,20 +194,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Topic Breakdown Progress */}
         <div className="dashboard-panel-box">
           <h3 className="dashboard-panel-title">Per-Topic Metrics</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {topics.map(topic => {
-              const { confident, due } = getTopicStats(topic.id);
+              const { confident, attempted, unseen, totalQuestions, dueFlashcards, totalFlashcards } = getTopicStats(topic.id);
+              const progressPercent = totalQuestions > 0 ? Math.round((confident / totalQuestions) * 100) : 0;
               return (
-                <div key={topic.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.75rem', borderBottom: '1px solid hsla(245, 100%, 80%, 0.03)' }}>
-                  <div>
-                    <h4 style={{ fontSize: '0.92rem', fontWeight: '500' }}>🏷️ {topic.title}</h4>
+                <div key={topic.id} style={{ paddingBottom: '1.25rem', borderBottom: '1px solid hsla(245, 100%, 80%, 0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: '500', color: 'var(--text-primary)' }}>🏷️ {topic.title}</h4>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--accent-cyan)' }}>{progressPercent}% Confident</span>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <span className="tag-difficulty confident" style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                  
+                  {/* Progress Bar */}
+                  <div style={{ width: '100%', height: '6px', background: 'var(--bg-darker)', borderRadius: '3px', overflow: 'hidden', marginBottom: '0.75rem', border: '1px solid var(--border-color)' }}>
+                    <div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--accent-gradient)', borderRadius: '3px', transition: 'width 0.5s ease' }}></div>
+                  </div>
+
+                  {/* Pills and details */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.7rem' }}>
+                    <span className="tag-difficulty confident" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                       🟢 {confident} Confident
                     </span>
-                    <span className="tag-difficulty medium" style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                      🎴 {due} Due Today
+                    <span className="tag-difficulty medium" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                      ⚠️ {attempted} Attempted
+                    </span>
+                    <span className="tag-difficulty unseen" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', background: 'rgba(255,255,255,0.03)', color: 'var(--text-muted)', border: '1px solid var(--border-color)' }}>
+                      🔘 {unseen} Unseen
+                    </span>
+                    <span className="tag-difficulty easy" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', marginLeft: 'auto', background: 'rgba(6, 182, 212, 0.1)' }}>
+                      🎴 {dueFlashcards} Due ({totalFlashcards} total)
                     </span>
                   </div>
                 </div>

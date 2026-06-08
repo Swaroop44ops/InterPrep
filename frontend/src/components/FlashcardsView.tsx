@@ -31,12 +31,21 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [reviewMode, setReviewMode] = useState<'due' | 'all'>('due');
+  const [activeTopicFilter, setActiveTopicFilter] = useState<number | null>(null);
+  const [orderByFilter, setOrderByFilter] = useState<'default' | 'alphabetical' | 'newest' | 'oldest'>('default');
   
   // Create Card Form State
   const [showAddForm, setShowAddForm] = useState(false);
   const [newFront, setNewFront] = useState('');
   const [newBack, setNewBack] = useState('');
   const [newTopicId, setNewTopicId] = useState(topics.length > 0 ? topics[0].id : 1);
+
+  // Synchronize newTopicId when topics load asynchronously
+  useEffect(() => {
+    if (topics.length > 0) {
+      setNewTopicId(topics[0].id);
+    }
+  }, [topics]);
 
   const fetchCards = async () => {
     setLoading(true);
@@ -58,10 +67,42 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
     fetchCards();
   }, []);
 
-  // Filter cards based on review mode (due vs all)
-  const displayedCards = reviewMode === 'due'
-    ? cards.filter(c => new Date(c.nextReviewDate) <= new Date())
-    : cards;
+  // Filter cards based on review mode and topic
+  const filteredCards = cards.filter(c => {
+    const matchesReviewMode = reviewMode === 'due'
+      ? new Date(c.nextReviewDate) <= new Date()
+      : true;
+    const matchesTopic = !activeTopicFilter || c.topicId === activeTopicFilter;
+    return matchesReviewMode && matchesTopic;
+  });
+
+  // Sort cards based on orderByFilter
+  const sortedCards = [...filteredCards].sort((a, b) => {
+    if (orderByFilter === 'alphabetical') {
+      return a.front.localeCompare(b.front);
+    }
+    if (orderByFilter === 'newest') {
+      return b.id - a.id;
+    }
+    if (orderByFilter === 'oldest') {
+      return a.id - b.id;
+    }
+    // 'default': scheduled nextReviewDate first, then creation id
+    const dateA = new Date(a.nextReviewDate).getTime();
+    const dateB = new Date(b.nextReviewDate).getTime();
+    if (dateA !== dateB) {
+      return dateA - dateB;
+    }
+    return a.id - b.id;
+  });
+
+  const displayedCards = sortedCards;
+
+  // Reset index when filters or order changes
+  useEffect(() => {
+    setCurrentIdx(0);
+    setIsFlipped(false);
+  }, [activeTopicFilter, orderByFilter, reviewMode]);
 
   const handleFlip = () => {
     setIsFlipped(!isFlipped);
@@ -143,20 +184,20 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
   const activeCard = displayedCards[currentIdx];
 
   return (
-    <div className="study-area" style={{ height: '100%', overflowY: 'auto' }}>
+    <div className="study-area" style={{ height: '100%', overflowY: 'auto', justifyContent: 'flex-start' }}>
       {/* Review Mode Selector */}
       <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '520px', alignItems: 'center', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
             className={`btn-status-toggle ${reviewMode === 'due' ? 'confident' : 'unseen'}`}
-            onClick={() => { setReviewMode('due'); setCurrentIdx(0); setIsFlipped(false); }}
+            onClick={() => { setReviewMode('due'); }}
             style={{ borderRadius: '20px' }}
           >
             Due Today ({cards.filter(c => new Date(c.nextReviewDate) <= new Date()).length})
           </button>
           <button
             className={`btn-status-toggle ${reviewMode === 'all' ? 'confident' : 'unseen'}`}
-            onClick={() => { setReviewMode('all'); setCurrentIdx(0); setIsFlipped(false); }}
+            onClick={() => { setReviewMode('all'); }}
             style={{ borderRadius: '20px' }}
           >
             All Cards ({cards.length})
@@ -169,6 +210,43 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
         >
           {showAddForm ? 'Cancel' : '+ Add Card'}
         </button>
+      </div>
+
+      {/* Filters and sorting header */}
+      <div className="dashboard-panel-box" style={{ width: '100%', maxWidth: '520px', marginBottom: '1.5rem', padding: '1rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+          {/* Topic Select */}
+          <div style={{ flex: '1 1 180px' }}>
+            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>Topic</label>
+            <select
+              className="notes-search-input"
+              value={activeTopicFilter || ''}
+              onChange={e => setActiveTopicFilter(e.target.value ? Number(e.target.value) : null)}
+              style={{ background: 'var(--bg-darker)', color: 'var(--text-primary)', padding: '0.35rem 0.5rem', height: '32px', fontSize: '0.8rem' }}
+            >
+              <option value="">All Topics</option>
+              {topics.map(t => (
+                <option key={t.id} value={t.id}>{t.title}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sort By Select */}
+          <div style={{ flex: '1 1 150px' }}>
+            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>Sort By</label>
+            <select
+              className="notes-search-input"
+              value={orderByFilter}
+              onChange={e => setOrderByFilter(e.target.value as any)}
+              style={{ background: 'var(--bg-darker)', color: 'var(--text-primary)', padding: '0.35rem 0.5rem', height: '32px', fontSize: '0.8rem' }}
+            >
+              <option value="default">Due First</option>
+              <option value="alphabetical">A-Z (Question)</option>
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Add Card Form Box */}
@@ -228,7 +306,7 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
               : "No flashcards in your deck yet. Click '+ Add Card' to create some!"}
           </p>
           {reviewMode === 'due' && cards.length > 0 && (
-            <button className="btn-retry" onClick={() => { setReviewMode('all'); setCurrentIdx(0); }}>
+            <button className="btn-retry" onClick={() => { setReviewMode('all'); }}>
               Study Ahead
             </button>
           )}
@@ -247,7 +325,9 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
             <div className="flashcard-inner">
               {/* Front side */}
               <div className="flashcard-front">
-                <span className="card-side-label">Front</span>
+                <span className="card-side-label">
+                  Front • {topics.find(t => t.id === activeCard?.topicId)?.title || 'General'}
+                </span>
                 <p className="flashcard-text">{activeCard?.front}</p>
                 <span style={{ position: 'absolute', bottom: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   Click to Flip
@@ -255,7 +335,9 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
               </div>
               {/* Back side */}
               <div className="flashcard-back">
-                <span className="card-side-label">Back / Answer</span>
+                <span className="card-side-label">
+                  Back • {topics.find(t => t.id === activeCard?.topicId)?.title || 'General'}
+                </span>
                 <p className="flashcard-text" style={{ whiteSpace: 'pre-line' }}>{activeCard?.back}</p>
                 <span style={{ position: 'absolute', bottom: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   Click to Flip Back
@@ -264,34 +346,75 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
             </div>
           </div>
 
-          {/* Review Buttons */}
-          <div style={{ display: 'flex', gap: '1rem', width: '100%', maxWidth: '320px', marginTop: '1rem' }}>
-            <button
-              className="btn-retry"
-              onClick={() => handleReview('hard')}
-              style={{
-                flex: 1,
-                background: 'rgba(239, 68, 68, 0.15)',
-                color: 'rgb(248, 113, 113)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                boxShadow: 'none',
-              }}
-            >
-              Hard (1d)
-            </button>
-            <button
-              className="btn-retry"
-              onClick={() => handleReview('easy')}
-              style={{
-                flex: 1,
-                background: 'rgba(108, 92, 231, 0.15)',
-                color: 'hsl(270, 100%, 75%)',
-                border: '1px solid hsla(270, 89%, 65%, 0.3)',
-                boxShadow: 'none',
-              }}
-            >
-              Easy ({activeCard?.intervalDays * 2}d)
-            </button>
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '0.75rem', width: '100%', maxWidth: '380px', marginTop: '1rem' }}>
+            {!isFlipped ? (
+              <button
+                className="btn-login"
+                onClick={handleFlip}
+                style={{
+                  width: '100%',
+                  margin: 0,
+                  padding: '0.6rem 1rem',
+                  fontSize: '0.9rem',
+                  background: 'var(--accent-gradient)',
+                  boxShadow: '0 4px 15px rgba(6, 182, 212, 0.25)',
+                }}
+              >
+                👀 Show Answer
+              </button>
+            ) : (
+              <>
+                <button
+                  className="btn-retry"
+                  onClick={() => handleReview('hard')}
+                  style={{
+                    flex: 1,
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: 'rgb(248, 113, 113)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    boxShadow: 'none',
+                    padding: '0.6rem',
+                    fontSize: '0.85rem',
+                    margin: 0
+                  }}
+                >
+                  🔴 Hard (1d)
+                </button>
+                <button
+                  className="btn-retry"
+                  onClick={() => handleReview('easy')}
+                  style={{
+                    flex: 1,
+                    background: 'rgba(108, 92, 231, 0.15)',
+                    color: 'hsl(270, 100%, 75%)',
+                    border: '1px solid hsla(270, 89%, 65%, 0.3)',
+                    boxShadow: 'none',
+                    padding: '0.6rem',
+                    fontSize: '0.85rem',
+                    margin: 0
+                  }}
+                >
+                  🟢 Easy ({activeCard?.intervalDays * 2}d)
+                </button>
+                <button
+                  className="btn-retry"
+                  onClick={handleFlip}
+                  style={{
+                    flex: 0.8,
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    color: 'var(--text-secondary)',
+                    border: '1px solid var(--border-color)',
+                    boxShadow: 'none',
+                    padding: '0.6rem',
+                    fontSize: '0.85rem',
+                    margin: 0
+                  }}
+                >
+                  👈 Question
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

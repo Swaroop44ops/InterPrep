@@ -313,9 +313,33 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Card {currentIdx + 1} of {displayedCards.length}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '0.75rem' }}>
+            <button
+              type="button"
+              className="toolbar-btn"
+              onClick={() => {
+                setIsFlipped(false);
+                setCurrentIdx((prev) => (prev > 0 ? prev - 1 : displayedCards.length - 1));
+              }}
+              style={{ padding: '0.35rem 0.8rem', fontSize: '0.8rem', cursor: 'pointer', background: 'var(--bg-darker)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', borderRadius: '4px' }}
+            >
+              ◀ Prev
+            </button>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Card {currentIdx + 1} of {displayedCards.length}
+            </span>
+            <button
+              type="button"
+              className="toolbar-btn"
+              onClick={() => {
+                setIsFlipped(false);
+                setCurrentIdx((prev) => (prev < displayedCards.length - 1 ? prev + 1 : 0));
+              }}
+              style={{ padding: '0.35rem 0.8rem', fontSize: '0.8rem', cursor: 'pointer', background: 'var(--bg-darker)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', borderRadius: '4px' }}
+            >
+              Next ▶
+            </button>
+          </div>
 
           {/* 3D Flip Card Container */}
           <div

@@ -17,6 +17,7 @@ namespace backend.Data
         public DbSet<Question> Questions { get; set; } = null!;
         public DbSet<StudySession> StudySessions { get; set; } = null!;
         public DbSet<User> Users { get; set; } = null!;
+        public DbSet<UserQuestionStatus> UserQuestionStatuses { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -71,6 +72,23 @@ namespace backend.Data
                 .HasOne<User>()
                 .WithMany()
                 .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure UserQuestionStatus keys and relations
+            modelBuilder.Entity<UserQuestionStatus>()
+                .HasIndex(us => new { us.UserId, us.QuestionId })
+                .IsUnique();
+
+            modelBuilder.Entity<UserQuestionStatus>()
+                .HasOne(us => us.Question)
+                .WithMany()
+                .HasForeignKey(us => us.QuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserQuestionStatus>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(us => us.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Seed default User "demo" (UserId = 1)

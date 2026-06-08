@@ -61,23 +61,6 @@ namespace backend.Services.Implementations
                     _context.Flashcards.Add(newCard);
                 }
 
-                // Clone default questions (from UserId = 1) for the new user
-                var defaultQuestions = await _context.Questions.AsNoTracking().Where(q => q.UserId == 1).ToListAsync();
-                foreach (var q in defaultQuestions)
-                {
-                    var newQuestion = new Question
-                    {
-                        Text = q.Text,
-                        Answer = q.Answer,
-                        TopicId = q.TopicId,
-                        Difficulty = q.Difficulty,
-                        Status = "Unseen",
-                        CreatedAt = DateTime.UtcNow,
-                        UserId = createdUser.Id
-                    };
-                    _context.Questions.Add(newQuestion);
-                }
-
                 await _context.SaveChangesAsync();
             }
             catch (Exception ex)

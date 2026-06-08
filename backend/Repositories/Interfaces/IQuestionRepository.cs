@@ -12,5 +12,6 @@ namespace backend.Repositories.Interfaces
         Task<Question> AddAsync(Question question);
         Task<Question> UpdateAsync(Question question);
         Task<bool> DeleteAsync(int id, int userId);
+        Task<Question?> UpdateStatusAsync(int id, string status, int userId);
     }
 }

@@ -34,19 +34,7 @@ namespace backend.Services.Implementations
 
         public async Task<Question?> UpdateQuestionStatusAsync(int id, string status, int userId)
         {
-            var question = await _questionRepository.GetByIdAsync(id, userId);
-            if (question == null) return null;
-
-            var formattedStatus = string.Empty;
-            if (string.Equals(status, "confident", StringComparison.OrdinalIgnoreCase))
-                formattedStatus = "Confident";
-            else if (string.Equals(status, "attempted", StringComparison.OrdinalIgnoreCase))
-                formattedStatus = "Attempted";
-            else
-                formattedStatus = "Unseen";
-
-            question.Status = formattedStatus;
-            return await _questionRepository.UpdateAsync(question);
+            return await _questionRepository.UpdateStatusAsync(id, status, userId);
         }
 
         public async Task<bool> DeleteQuestionAsync(int id, int userId)

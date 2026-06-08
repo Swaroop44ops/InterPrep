@@ -26,7 +26,7 @@ namespace backend.Models
         [Required]
         public string Difficulty { get; set; } = "Medium"; // "Easy", "Medium", "Hard"
 
-        [Required]
+        [NotMapped]
         public string Status { get; set; } = "Unseen"; // "Unseen", "Attempted", "Confident"
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

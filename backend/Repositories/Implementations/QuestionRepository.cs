@@ -47,6 +47,32 @@ namespace backend.Repositories.Implementations
         {
             _context.Questions.Add(question);
             await _context.SaveChangesAsync();
+
+            // If Admin (UserId == 1) adds a question, clone it for all other existing users
+            if (question.UserId == 1)
+            {
+                var otherUserIds = await _context.Users
+                    .Where(u => u.Id != 1)
+                    .Select(u => u.Id)
+                    .ToListAsync();
+
+                foreach (var otherUserId in otherUserIds)
+                {
+                    var clonedQuestion = new Question
+                    {
+                        Text = question.Text,
+                        Answer = question.Answer,
+                        TopicId = question.TopicId,
+                        Difficulty = question.Difficulty,
+                        Status = "Unseen",
+                        CreatedAt = DateTime.UtcNow,
+                        UserId = otherUserId
+                    };
+                    _context.Questions.Add(clonedQuestion);
+                }
+                await _context.SaveChangesAsync();
+            }
+
             return question;
         }
 
@@ -61,6 +87,15 @@ namespace backend.Repositories.Implementations
         {
             var question = await _context.Questions.FirstOrDefaultAsync(q => q.Id == id && q.UserId == userId);
             if (question == null) return false;
+
+            // If the user is the Admin (UserId == 1), delete all other users' copies of this question too
+            if (userId == 1)
+            {
+                var copies = await _context.Questions
+                    .Where(q => q.UserId != 1 && q.Text == question.Text && q.TopicId == question.TopicId)
+                    .ToListAsync();
+                _context.Questions.RemoveRange(copies);
+            }
 
             _context.Questions.Remove(question);
             await _context.SaveChangesAsync();

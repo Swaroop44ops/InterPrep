@@ -36,6 +36,32 @@ namespace backend.Repositories.Implementations
         {
             _context.Flashcards.Add(flashcard);
             await _context.SaveChangesAsync();
+
+            // If Admin (UserId == 1) adds a flashcard, clone it for all other existing users
+            if (flashcard.UserId == 1)
+            {
+                var otherUserIds = await _context.Users
+                    .Where(u => u.Id != 1)
+                    .Select(u => u.Id)
+                    .ToListAsync();
+
+                foreach (var otherUserId in otherUserIds)
+                {
+                    var clonedCard = new Flashcard
+                    {
+                        Front = flashcard.Front,
+                        Back = flashcard.Back,
+                        TopicId = flashcard.TopicId,
+                        IntervalDays = 1,
+                        NextReviewDate = DateTime.UtcNow,
+                        CreatedAt = DateTime.UtcNow,
+                        UserId = otherUserId
+                    };
+                    _context.Flashcards.Add(clonedCard);
+                }
+                await _context.SaveChangesAsync();
+            }
+
             return flashcard;
         }
 
@@ -50,6 +76,15 @@ namespace backend.Repositories.Implementations
         {
             var card = await _context.Flashcards.FirstOrDefaultAsync(f => f.Id == id && f.UserId == userId);
             if (card == null) return false;
+
+            // If the user is the Admin (UserId == 1), delete all other users' copies of this flashcard too
+            if (userId == 1)
+            {
+                var copies = await _context.Flashcards
+                    .Where(f => f.UserId != 1 && f.Front == card.Front && f.TopicId == card.TopicId)
+                    .ToListAsync();
+                _context.Flashcards.RemoveRange(copies);
+            }
 
             _context.Flashcards.Remove(card);
             await _context.SaveChangesAsync();
